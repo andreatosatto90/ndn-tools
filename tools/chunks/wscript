@@ -1,12 +1,21 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
 top = '../..'
 
+def configure(conf):
+    conf.check_cfg(package='lttng-ust', args='--cflags --libs',
+                   uselib_store="LTTNG-UST", mandatory=True)
+
 def build(bld):
+
+    bld(features='cxx',
+        name='ndnchunks-tp',
+        source=bld.path.ant_glob('chunks-tracepoint.cpp'),
+        use='core-objects LTTNG-UST')
 
     bld(features='cxx',
         name='ndncatchunks-objects',
         source=bld.path.ant_glob('catchunks/*.cpp', excl='catchunks/ndncatchunks.cpp'),
-        use='core-objects')
+        use='core-objects ndnchunks-tp')
 
     bld(features='cxx cxxprogram',
         target='../../bin/ndncatchunks',
@@ -26,5 +35,5 @@ def build(bld):
     ## (for unit tests)
 
     bld(name='chunks-objects',
-        use='ndncatchunks-objects ndnputchunks-objects')
+        use='ndnchunks-tp ndncatchunks-objects ndnputchunks-objects')
 

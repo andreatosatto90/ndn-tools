@@ -28,6 +28,8 @@
 #include "discover-version.hpp"
 #include "data-fetcher.hpp"
 
+#include "../chunks-tracepoint.hpp"
+
 namespace ndn {
 namespace chunks {
 
@@ -52,18 +54,27 @@ DiscoverVersion::expressInterest(const Interest& interest, int maxRetriesNack,
 void
 DiscoverVersion::handleData(const Interest& interest, const Data& data)
 {
+  if (data.getName()[-1].isSegment())
+    tracepoint(chunksLog, data_discovery, data.getName()[-1].toSegment(), data.getContent().size());
+
   onDiscoverySuccess(data);
 }
 
 void
 DiscoverVersion::handleNack(const Interest& interest, const std::string& reason)
 {
+  if (interest.getName()[-1].isSegment())
+    tracepoint(chunksLog, interest_nack, interest.getName()[-1].toSegment());
+
   onDiscoveryFailure(reason);
 }
 
 void
 DiscoverVersion::handleTimeout(const Interest& interest, const std::string& reason)
 {
+  if (interest.getName()[-1].isSegment())
+    tracepoint(chunksLog, interest_timeout, interest.getName()[-1].toSegment());
+
   onDiscoveryFailure(reason);
 }
 

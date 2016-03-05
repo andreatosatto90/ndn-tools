@@ -38,6 +38,7 @@ Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostrea
   , m_nextToPrint(0)
   , m_outputStream(os)
   , m_isVerbose(isVerbose)
+  , m_receivedBytes(0)
 {
 }
 
@@ -63,6 +64,8 @@ void Consumer::runWithData(const Data& data)
                                      bind(&Consumer::onData, this, _1, _2),
                                      bind(&Consumer::onFailure, this, _1));
 
+  m_receivedBytes = 0;
+  m_startTime = time::steady_clock::now();
 }
 
 void
@@ -85,6 +88,19 @@ Consumer::onDataValidated(shared_ptr<const Data> data)
   }
 
   m_bufferedData[data->getName()[-1].toSegment()] = data;
+
+  m_receivedBytes += data->getContent().value_size(); //TODO
+  time::milliseconds runningTime = time::duration_cast<time::milliseconds> (time::steady_clock::now() - m_startTime);
+  //runningTime += time::seconds(1);
+
+  //tracelog(TRACE_INFO, "my message, my integer: %d", 2);
+  //std::cerr << data->getName()[-1].toSegment() << "Size: " << data->getContent().value_size() << " time: " << runningTime.count() << std::endl;
+
+  if (data->getName()[-1].toSegment() == data->getFinalBlockId().toSegment()) { //TODO errore final block id
+   std::cerr << "Received: " << m_receivedBytes << " bytes - Time: " << (runningTime.count() / 1000) << " seconds" <<std::endl;
+   std::cerr << "Speed: " << static_cast<double>(m_receivedBytes/1000) / (runningTime.count() / 1000) << " KB/s" <<std::endl;
+  }
+
   writeInOrderData();
 }
 

@@ -25,6 +25,8 @@
 
 #include "discover-version-fixed.hpp"
 
+#include "../chunks-tracepoint.hpp"
+
 #include <cmath>
 #include <boost/lexical_cast.hpp>
 
@@ -48,6 +50,8 @@ DiscoverVersionFixed::run()
   interest.setMinSuffixComponents(2);
 
   expressInterest(interest, maxRetriesOnTimeoutOrNack, maxRetriesOnTimeoutOrNack);
+
+  tracepoint(chunksLog, interest_discovery, 0);
 }
 
 void
@@ -60,6 +64,9 @@ DiscoverVersionFixed::handleData(const Interest& interest, const Data& data)
   if (data.getName()[segmentIndex].isSegment()) {
     if (isVerbose)
       std::cerr << "Found data with the requested version: " << m_prefix[-1] << std::endl;
+
+    if (data.getName()[-1].isSegment())
+      tracepoint(chunksLog, data_discovery, data.getName()[-1].toSegment(), data.getContent().size());
 
     this->emitSignal(onDiscoverySuccess, data);
   }

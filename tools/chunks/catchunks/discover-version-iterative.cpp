@@ -27,6 +27,8 @@
 
 #include "discover-version-iterative.hpp"
 
+#include "../chunks-tracepoint.hpp"
+
 namespace ndn {
 namespace chunks {
 
@@ -55,6 +57,7 @@ DiscoverVersionIterative::run()
   interest.setChildSelector(1);
 
   expressInterest(interest, maxRetriesOnTimeoutOrNack, maxRetriesOnTimeoutOrNack);
+  tracepoint(chunksLog, interest_discovery, 0);
 }
 
 void

@@ -92,6 +92,8 @@ private:
   uint64_t m_nextToPrint;
   std::ostream& m_outputStream;
   bool m_isVerbose;
+  uint64_t m_receivedBytes;
+  time::steady_clock::TimePoint m_startTime;
 
 PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   std::map<uint64_t, shared_ptr<const Data>> m_bufferedData;

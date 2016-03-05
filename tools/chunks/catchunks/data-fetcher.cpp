@@ -25,6 +25,7 @@
  */
 
 #include "data-fetcher.hpp"
+#include "../chunks-tracepoint.hpp"
 
 #include <cmath>
 
@@ -47,6 +48,7 @@ DataFetcher::fetch(Face& face, const Interest& interest, int maxNackRetries, int
                                                              std::move(onTimeout),
                                                              isVerbose));
   dataFetcher->expressInterest(interest, dataFetcher);
+
   return dataFetcher;
 }
 
@@ -88,6 +90,9 @@ DataFetcher::expressInterest(const Interest& interest, const shared_ptr<DataFetc
                                         bind(&DataFetcher::handleData, this, _1, _2, self),
                                         bind(&DataFetcher::handleNack, this, _1, _2, self),
                                         bind(&DataFetcher::handleTimeout, this, _1, self));
+
+  if (interest.getName()[-1].isSegment())
+    tracepoint(chunksLog, interest_sent, interest.getName()[-1].toSegment());
 }
 
 void
@@ -96,6 +101,9 @@ DataFetcher::handleData(const Interest& interest, const Data& data,
 {
   if (!isRunning())
     return;
+
+  if (data.getName()[-1].isSegment())
+    tracepoint(chunksLog, data_received, data.getName()[-1].toSegment(), data.getContent().size());
 
   m_isStopped = true;
   m_onData(interest, data);
@@ -107,6 +115,9 @@ DataFetcher::handleNack(const Interest& interest, const lp::Nack& nack,
 {
   if (!isRunning())
     return;
+
+  if (interest.getName()[-1].isSegment())
+    tracepoint(chunksLog, interest_nack, interest.getName()[-1].toSegment());
 
   if (m_maxNackRetries != MAX_RETRIES_INFINITE)
     ++m_nNacks;
@@ -157,6 +168,9 @@ DataFetcher::handleTimeout(const Interest& interest, const shared_ptr<DataFetche
 {
   if (!isRunning())
     return;
+
+  if (interest.getName()[-1].isSegment())
+    tracepoint(chunksLog, interest_timeout, interest.getName()[-1].toSegment());
 
   if (m_maxTimeoutRetries != MAX_RETRIES_INFINITE)
     ++m_nTimeouts;
