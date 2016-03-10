@@ -30,6 +30,7 @@
 #include "consumer.hpp"
 #include "discover-version-fixed.hpp"
 #include "discover-version-iterative.hpp"
+#include "../chunks-tracepoint.hpp"
 
 #include <ndn-cxx/security/validator-null.hpp>
 
@@ -156,17 +157,24 @@ main(int argc, char** argv)
     PipelineInterests pipeline(face, optionsPipeline);
 
     BOOST_ASSERT(discover != nullptr);
+
+    tracepoint(chunksLog, cat_started, maxPipelineSize, options.interestLifetime.count(),
+               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh);
+
     consumer.run(*discover, pipeline);
   }
   catch (const Consumer::ApplicationNackError& e) {
+    tracepoint(chunksLog, cat_stopped, 3);
     std::cerr << "ERROR: " << e.what() << std::endl;
     return 3;
   }
   catch (const std::exception& e) {
+    tracepoint(chunksLog, cat_stopped, 1);
     std::cerr << "ERROR: " << e.what() << std::endl;
     return 1;
   }
 
+  tracepoint(chunksLog, cat_stopped, 0);
   return 0;
 }
 
