@@ -46,6 +46,7 @@ main(int argc, char** argv)
   size_t maxPipelineSize(1);
   int maxRetriesAfterVersionFound(1);
   std::string uri;
+  bool printStat = false;
 
   namespace po = boost::program_options;
   po::options_description visibleDesc("Options");
@@ -65,6 +66,7 @@ main(int argc, char** argv)
                             "version as the latest one (only applicable to 'iterative' version discovery)")
     ("verbose,v",   po::bool_switch(&options.isVerbose), "turn on verbose output")
     ("version,V",   "print program version and exit")
+    ("printStat,S",   po::bool_switch(&printStat), "turn on statistics output")
     ;
 
   po::options_description hiddenDesc("Hidden options");
@@ -150,7 +152,7 @@ main(int argc, char** argv)
     }
 
     ValidatorNull validator;
-    Consumer consumer(face, validator, options.isVerbose);
+    Consumer consumer(face, validator, options.isVerbose, std::cout, printStat);
 
     PipelineInterests::Options optionsPipeline(options);
     optionsPipeline.maxPipelineSize = maxPipelineSize;

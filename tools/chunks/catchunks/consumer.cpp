@@ -31,14 +31,15 @@
 namespace ndn {
 namespace chunks {
 
-Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os)
+Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os, bool printStat)
   : m_face(face)
   , m_validator(validator)
   , m_pipeline(nullptr)
   , m_nextToPrint(0)
   , m_outputStream(os)
   , m_isVerbose(isVerbose)
-  , m_receivedBytes(0)
+  , m_printStat(printStat)
+  , m_scheduler(face.getIoService())
 {
 }
 
@@ -46,6 +47,7 @@ void Consumer::run(DiscoverVersion& discover, PipelineInterests& pipeline)
 {
   m_pipeline = &pipeline;
   m_nextToPrint = 0;
+
 
   discover.onDiscoverySuccess.connect(bind(&Consumer::runWithData, this, _1));
   discover.onDiscoveryFailure.connect(bind(&Consumer::onFailure, this, _1));
@@ -64,8 +66,15 @@ void Consumer::runWithData(const Data& data)
                                      bind(&Consumer::onData, this, _1, _2),
                                      bind(&Consumer::onFailure, this, _1));
 
+  m_segmentsReceived = 0;
+  m_lastSegment = 0;
   m_receivedBytes = 0;
+  m_lastReceivedBytes = 0;
   m_startTime = time::steady_clock::now();
+  m_lastPrintTime = m_startTime;
+
+  if (m_printStat)
+    m_scheduler.scheduleEvent(time::seconds(1), bind(&Consumer::printStatistics, this));
 }
 
 void
@@ -87,19 +96,14 @@ Consumer::onDataValidated(shared_ptr<const Data> data)
     throw ApplicationNackError(*data);
   }
 
+  m_lastSegment = data->getFinalBlockId().toSegment();
+
   m_bufferedData[data->getName()[-1].toSegment()] = data;
 
-  //m_receivedBytes += data->getContent().value_size(); //TODO
-  //time::milliseconds runningTime = time::duration_cast<time::milliseconds> (time::steady_clock::now() - m_startTime);
-  //runningTime += time::seconds(1);
+  m_receivedBytes += data->getContent().value_size();
+  m_lastReceivedBytes += data->getContent().value_size();
 
-  //tracelog(TRACE_INFO, "my message, my integer: %d", 2);
-  //std::cerr << data->getName()[-1].toSegment() << "Size: " << data->getContent().value_size() << " time: " << runningTime.count() << std::endl;
-
-  //if (data->getName()[-1].toSegment() == data->getFinalBlockId().toSegment()) { //TODO errore final block id
-  // std::cerr << "Received: " << m_receivedBytes << " bytes - Time: " << (runningTime.count() / 1000) << " seconds" <<std::endl;
-  // std::cerr << "Speed: " << static_cast<double>(m_receivedBytes/1000) / (runningTime.count() / 1000) << " KB/s" <<std::endl;
-  //}
+  m_segmentsReceived++;
 
   writeInOrderData();
 }
@@ -108,6 +112,31 @@ void
 Consumer::onFailure(const std::string& reason)
 {
   throw std::runtime_error(reason);
+}
+
+void
+Consumer::printStatistics()
+{
+  time::milliseconds runningTime =
+      time::duration_cast<time::milliseconds> (time::steady_clock::now() - m_startTime);
+  time::milliseconds lastRunningTime =
+      time::duration_cast<time::milliseconds> (time::steady_clock::now() - m_lastPrintTime);
+
+  if (m_receivedBytes > 0) {
+
+    int perc = (static_cast<float>(m_segmentsReceived) / m_lastSegment) * 100;
+    std::cerr << perc << "% \t"
+              << " T " << static_cast<double>(m_receivedBytes/1000) << " KB \t"
+              << static_cast<double>(m_receivedBytes/1000) / (runningTime.count() / 1000) << " KB/s \t"
+              << " C " << static_cast<double>(m_lastReceivedBytes/1000) << " KB  \t"
+              << static_cast<double>(m_lastReceivedBytes/1000) / (lastRunningTime.count() / 1000) << " KB/s \t"
+              << std::endl;
+  }
+  m_lastPrintTime = time::steady_clock::now();
+  m_lastReceivedBytes = 0;
+
+  if (m_segmentsReceived < m_lastSegment)
+    m_scheduler.scheduleEvent(time::seconds(1), bind(&Consumer::printStatistics, this));
 }
 
 void

@@ -12,7 +12,7 @@
 TRACEPOINT_EVENT(
   chunksLog,
   cat_started,
-  TP_ARGS(              // TODO no ARGS
+  TP_ARGS(
     int, maxPipelineSize,
     int, interestLifetime,
     int, maxRetries,

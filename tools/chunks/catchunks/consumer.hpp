@@ -60,7 +60,7 @@ public:
   /**
    * @brief Create the consumer
    */
-  Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os = std::cout);
+  Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os = std::cout, bool printStat = false);
 
   /**
    * @brief Run the consumer
@@ -81,6 +81,9 @@ private:
   void
   onFailure(const std::string& reason);
 
+  void
+  printStatistics();
+
 PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   void
   writeInOrderData();
@@ -92,8 +95,16 @@ private:
   uint64_t m_nextToPrint;
   std::ostream& m_outputStream;
   bool m_isVerbose;
+
+  // Statistics
+  bool m_printStat;
+  Scheduler m_scheduler;
+  uint64_t m_segmentsReceived;
+  uint64_t m_lastSegment;
   uint64_t m_receivedBytes;
   time::steady_clock::TimePoint m_startTime;
+  uint64_t m_lastReceivedBytes;
+  time::steady_clock::TimePoint m_lastPrintTime;
 
 PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   std::map<uint64_t, shared_ptr<const Data>> m_bufferedData;
