@@ -48,7 +48,6 @@ void Consumer::run(DiscoverVersion& discover, PipelineInterests& pipeline)
   m_pipeline = &pipeline;
   m_nextToPrint = 0;
 
-
   discover.onDiscoverySuccess.connect(bind(&Consumer::runWithData, this, _1));
   discover.onDiscoveryFailure.connect(bind(&Consumer::onFailure, this, _1));
 
@@ -66,8 +65,8 @@ void Consumer::runWithData(const Data& data)
                                      bind(&Consumer::onData, this, _1, _2),
                                      bind(&Consumer::onFailure, this, _1));
 
-  m_segmentsReceived = 0;
-  m_lastSegment = 0;
+  m_nReceivedSegments = 0;
+  m_lastSegmentNo = 0;
   m_receivedBytes = 0;
   m_lastReceivedBytes = 0;
   m_startTime = time::steady_clock::now();
@@ -96,14 +95,14 @@ Consumer::onDataValidated(shared_ptr<const Data> data)
     throw ApplicationNackError(*data);
   }
 
-  m_lastSegment = data->getFinalBlockId().toSegment();
+  m_lastSegmentNo = data->getFinalBlockId().toSegment();
 
   m_bufferedData[data->getName()[-1].toSegment()] = data;
 
   m_receivedBytes += data->getContent().value_size();
   m_lastReceivedBytes += data->getContent().value_size();
 
-  m_segmentsReceived++;
+  m_nReceivedSegments++;
 
   writeInOrderData();
 }
@@ -124,7 +123,7 @@ Consumer::printStatistics()
 
   if (m_receivedBytes > 0) {
 
-    int perc = (static_cast<float>(m_segmentsReceived) / m_lastSegment) * 100;
+    int perc = (static_cast<float>(m_nReceivedSegments) / m_lastSegmentNo) * 100;
     std::cerr << perc << "% \t"
               << " T " << static_cast<double>(m_receivedBytes/1000) << " KB \t"
               << static_cast<double>(m_receivedBytes/1000) / (runningTime.count() / 1000) << " KB/s \t"
@@ -135,7 +134,7 @@ Consumer::printStatistics()
   m_lastPrintTime = time::steady_clock::now();
   m_lastReceivedBytes = 0;
 
-  if (m_segmentsReceived < m_lastSegment)
+  if (m_nReceivedSegments < m_lastSegmentNo)
     m_scheduler.scheduleEvent(time::seconds(1), bind(&Consumer::printStatistics, this));
 }
 

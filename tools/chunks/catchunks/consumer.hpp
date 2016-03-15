@@ -99,10 +99,11 @@ private:
   // Statistics
   bool m_printStat;
   Scheduler m_scheduler;
-  uint64_t m_segmentsReceived;
-  uint64_t m_lastSegment;
+  uint64_t m_nReceivedSegments;
+  uint64_t m_lastSegmentNo;
   uint64_t m_receivedBytes;
   time::steady_clock::TimePoint m_startTime;
+
   uint64_t m_lastReceivedBytes;
   time::steady_clock::TimePoint m_lastPrintTime;
 

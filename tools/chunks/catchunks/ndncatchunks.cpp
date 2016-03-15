@@ -66,7 +66,7 @@ main(int argc, char** argv)
                             "version as the latest one (only applicable to 'iterative' version discovery)")
     ("verbose,v",   po::bool_switch(&options.isVerbose), "turn on verbose output")
     ("version,V",   "print program version and exit")
-    ("printStat,S",   po::bool_switch(&printStat), "turn on statistics output")
+    ("printStat,S", po::bool_switch(&printStat), "turn on statistics output")
     ;
 
   po::options_description hiddenDesc("Hidden options");
