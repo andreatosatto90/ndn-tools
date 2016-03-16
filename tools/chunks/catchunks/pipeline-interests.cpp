@@ -64,6 +64,8 @@ PipelineInterests::runWithExcludedSegment(const Data& data, DataCallback onData,
   if (!data.getFinalBlockId().empty()) {
     m_hasFinalBlockId = true;
     m_lastSegmentNo = data.getFinalBlockId().toSegment();
+
+    std::cerr << "Set last segment number to " << m_lastSegmentNo << std::endl; // TODO delete line
   }
 
   // if the FinalBlockId is unknown, this could potentially request non-existent segments
@@ -151,6 +153,8 @@ PipelineInterests::handleData(const Interest& interest, const Data& data, size_t
   if (!m_hasFinalBlockId && !data.getFinalBlockId().empty()) {
     m_lastSegmentNo = data.getFinalBlockId().toSegment();
     m_hasFinalBlockId = true;
+
+    std::cerr << "Set (2) last segment number to " << m_lastSegmentNo << std::endl; // TODO delete line
 
     for (auto& fetcher : m_segmentFetchers) {
       if (fetcher.first && fetcher.second > m_lastSegmentNo) {
