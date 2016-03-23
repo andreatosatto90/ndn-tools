@@ -27,6 +27,8 @@
 
 #include "producer.hpp"
 
+#include "../chunks-tracepoint.hpp"
+
 namespace ndn {
 namespace chunks {
 
@@ -65,6 +67,12 @@ Producer::Producer(const Name& prefix,
                            RegisterPrefixSuccessCallback(),
                            bind(&Producer::onRegisterFailed, this, _1, _2));
 
+  std::ostringstream sign;
+  sign << signingInfo;
+
+  tracepoint(chunksLog, put_started, prefix.toUri().c_str(), sign.str().c_str(),
+             freshnessPeriod.count(), maxSegmentSize, m_store.size());
+
   if (m_isVerbose)
     std::cerr << "Data published with name: " << m_versionedPrefix << std::endl;
 }
@@ -85,19 +93,21 @@ Producer::onInterest(const Interest& interest)
 
   const Name& name = interest.getName();
   shared_ptr<Data> data;
+  size_t segmentNo = 0;
 
   // is this a discovery Interest or a sequence retrieval?
   if (name.size() == m_versionedPrefix.size() + 1 && m_versionedPrefix.isPrefixOf(name) &&
       name[-1].isSegment()) {
-    const auto segmentNo = static_cast<size_t>(interest.getName()[-1].toSegment());
+    segmentNo = static_cast<size_t>(interest.getName()[-1].toSegment());
     // specific segment retrieval
     if (segmentNo < m_store.size()) {
       data = m_store[segmentNo];
     }
   }
   else if (interest.matchesData(*m_store[0])) {
+    segmentNo = 0;
     // Interest has version and is looking for the first segment or has no version
-    data = m_store[0];
+    data = m_store[segmentNo];
   }
 
   if (data != nullptr) {
@@ -105,6 +115,8 @@ Producer::onInterest(const Interest& interest)
       std::cerr << "Data: " << *data << std::endl;
 
     m_face.put(*data);
+
+    tracepoint(chunksLog, data_sent, segmentNo, data->getContent().size());
   }
 }
 

@@ -122,7 +122,6 @@ Consumer::printStatistics()
       time::duration_cast<time::milliseconds> (time::steady_clock::now() - m_lastPrintTime);
 
   if (m_receivedBytes > 0) {
-
     int perc = (static_cast<float>(m_nReceivedSegments) / m_lastSegmentNo) * 100;
     std::cerr << perc << "% \t"
               << " T " << static_cast<double>(m_receivedBytes/1000) << " KB \t"

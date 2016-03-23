@@ -25,7 +25,7 @@ def build(bld):
     bld(features='cxx',
         name='ndnputchunks-objects',
         source=bld.path.ant_glob('putchunks/*.cpp', excl='putchunks/ndnputchunks.cpp'),
-        use='core-objects')
+        use='core-objects ndnchunks-tp')
 
     bld(features='cxx cxxprogram',
         target='../../bin/ndnputchunks',

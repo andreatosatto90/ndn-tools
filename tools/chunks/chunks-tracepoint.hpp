@@ -39,6 +39,64 @@ TRACEPOINT_EVENT(
 
 TRACEPOINT_EVENT(
   chunksLog,
+  put_started,
+  TP_ARGS(
+    const char*, prefix,
+    const char*, signingInfo,
+    int, freshness,
+    int, maxSegmentSize,
+    int, numberOfSegments
+  ),
+  TP_FIELDS(
+    ctf_string(prefix, prefix)
+    ctf_string(signing_info, signingInfo)
+    ctf_integer(int, freshness, freshness)
+    ctf_integer(int, max_segment_size, maxSegmentSize)
+    ctf_integer(int, number_of_segments, numberOfSegments)
+  )
+)
+
+TRACEPOINT_EVENT(
+  chunksLog,
+  data_discovery,
+  TP_ARGS(
+    int, segmentNo,
+    int, bytes
+  ),
+  TP_FIELDS(
+    ctf_integer(int, bytes, bytes)
+    ctf_integer(int, segment_number, segmentNo)
+  )
+)
+
+TRACEPOINT_EVENT(
+  chunksLog,
+  data_received,
+  TP_ARGS(
+    int, segmentNo,
+    int, bytes
+  ),
+  TP_FIELDS(
+    ctf_integer(int, bytes, bytes)
+    ctf_integer(int, segment_number, segmentNo)
+  )
+)
+
+TRACEPOINT_EVENT(
+  chunksLog,
+  data_sent,
+  TP_ARGS(
+    int, segmentNo,
+    int, bytes
+  ),
+  TP_FIELDS(
+    ctf_integer(int, bytes, bytes)
+    ctf_integer(int, segment_number, segmentNo)
+  )
+)
+
+TRACEPOINT_EVENT(
+  chunksLog,
   interest_discovery,
   TP_ARGS(              // TODO no ARGS
     int, segmentNo
@@ -50,37 +108,11 @@ TRACEPOINT_EVENT(
 
 TRACEPOINT_EVENT(
   chunksLog,
-  data_discovery,
-  TP_ARGS(
-    int, segmentNo,
-    int, receivedBytes
-  ),
-  TP_FIELDS(
-    ctf_integer(int, received_bytes, receivedBytes)
-    ctf_integer(int, segment_number, segmentNo)
-  )
-)
-
-TRACEPOINT_EVENT(
-  chunksLog,
   interest_sent,
   TP_ARGS(
     int, segmentNo
   ),
   TP_FIELDS(
-    ctf_integer(int, segment_number, segmentNo)
-  )
-)
-
-TRACEPOINT_EVENT(
-  chunksLog,
-  data_received,
-  TP_ARGS(
-    int, segmentNo,
-    int, receivedBytes
-  ),
-  TP_FIELDS(
-    ctf_integer(int, received_bytes, receivedBytes)
     ctf_integer(int, segment_number, segmentNo)
   )
 )
