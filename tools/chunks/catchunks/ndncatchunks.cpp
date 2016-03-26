@@ -49,6 +49,8 @@ main(int argc, char** argv)
 
   bool printStat = false;
   uint64_t randomWaitMax = 0;
+  bool startWait = false;
+  bool noDiscovery = false;
 
   namespace po = boost::program_options;
   po::options_description visibleDesc("Options");
@@ -71,6 +73,8 @@ main(int argc, char** argv)
     ("printStat,S", po::bool_switch(&printStat), "turn on statistics output")
     ("randomWait,w",  po::value<uint64_t>(&randomWaitMax)->default_value(randomWaitMax),
                     "maximum wait time before sending an interest")
+    ("startWait,W",  po::bool_switch(&startWait), "add delay only to the first interest of each pipe")
+    ("noDiscovery,k",  po::bool_switch(&noDiscovery), "disable discovery, the name should have a version number")
     ;
 
   po::options_description hiddenDesc("Hidden options");
@@ -121,8 +125,8 @@ main(int argc, char** argv)
     return 2;
   }
 
-  if (maxPipelineSize < 1 || maxPipelineSize > 1024) {
-    std::cerr << "ERROR: pipeline size must be between 1 and 1024" << std::endl;
+  if (maxPipelineSize < 1 || maxPipelineSize > 65536) {
+    std::cerr << "ERROR: pipeline size must be between 1 and 65536" << std::endl;
     return 2;
   }
 
@@ -160,14 +164,14 @@ main(int argc, char** argv)
 
     PipelineInterests::Options optionsPipeline(options);
     optionsPipeline.maxPipelineSize = maxPipelineSize;
-    PipelineInterests pipeline(face, optionsPipeline, randomWaitMax);
+    PipelineInterests pipeline(face, optionsPipeline, randomWaitMax, startWait);
 
     BOOST_ASSERT(discover != nullptr);
 
     tracepoint(chunksLog, cat_started, maxPipelineSize, options.interestLifetime.count(),
-               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, randomWaitMax);
+               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, randomWaitMax, startWait);
 
-    consumer.run(*discover, pipeline);
+    consumer.run(*discover, pipeline, noDiscovery);
   }
   catch (const Consumer::ApplicationNackError& e) {
     tracepoint(chunksLog, cat_stopped, 3);

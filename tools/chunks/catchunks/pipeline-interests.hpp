@@ -73,7 +73,7 @@ public:
    * configuration the method runWithExcludedSegment must be called to run the Pipeline.
    */
   explicit
-  PipelineInterests(Face& face, const Options& options = Options(), uint64_t randomWaitMax = 0);
+  PipelineInterests(Face& face, const Options& options = Options(), uint64_t randomWaitMax = 0, bool startWait = false);
 
   ~PipelineInterests();
 
@@ -90,6 +90,9 @@ public:
    */
   void
   runWithExcludedSegment(const Data& data, DataCallback onData, FailureCallback onFailure);
+
+  void
+  runWithName(Name nameWithVersion, DataCallback onData, FailureCallback onFailure);
 
   /**
    * @brief stop all fetch operations
@@ -142,6 +145,7 @@ private:
   uint64_t m_randomWaitMax;
   Scheduler m_scheduler;
   std::mt19937 m_randomGen;
+  bool m_startWait;
 };
 
 } // namespace chunks

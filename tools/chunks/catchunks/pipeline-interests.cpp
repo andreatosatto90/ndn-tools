@@ -31,7 +31,7 @@
 namespace ndn {
 namespace chunks {
 
-PipelineInterests::PipelineInterests(Face& face, const Options& options, uint64_t randomWaitMax)
+PipelineInterests::PipelineInterests(Face& face, const Options& options, uint64_t randomWaitMax, bool startWait)
   : m_face(face)
   , m_nextSegmentNo(0)
   , m_lastSegmentNo(0)
@@ -42,6 +42,7 @@ PipelineInterests::PipelineInterests(Face& face, const Options& options, uint64_
   , m_hasFailure(false)
   , m_randomWaitMax(randomWaitMax)
   , m_scheduler(face.getIoService())
+  , m_startWait(startWait)
 {
   m_segmentFetchers.resize(m_options.maxPipelineSize);
   std::random_device rd;
@@ -76,6 +77,23 @@ PipelineInterests::runWithExcludedSegment(const Data& data, DataCallback onData,
     deferredFetchNextSegment(nRequestedSegments);
     //if (!fetchNextSegment(nRequestedSegments)) // all segments have been requested
       //break;
+  }
+}
+
+void
+PipelineInterests::runWithName(Name nameWithVersion, DataCallback onData, FailureCallback onFailure)
+{
+  BOOST_ASSERT(onData != nullptr);
+  m_onData = std::move(onData);
+  m_onFailure = std::move(onFailure);
+
+  m_prefix = nameWithVersion;
+  m_excludeSegmentNo = std::numeric_limits<uint64_t>::max();
+
+  // if the FinalBlockId is unknown, this could potentially request non-existent segments
+  for (size_t nRequestedSegments = 0; nRequestedSegments < m_options.maxPipelineSize;
+       nRequestedSegments++) {
+    deferredFetchNextSegment(nRequestedSegments);
   }
 }
 
@@ -173,8 +191,6 @@ PipelineInterests::handleData(const Interest& interest, const Data& data, size_t
     m_lastSegmentNo = data.getFinalBlockId().toSegment();
     m_hasFinalBlockId = true;
 
-    std::cerr << "Set (2) last segment number to " << m_lastSegmentNo << std::endl; // TODO delete line
-
     for (auto& fetcher : m_segmentFetchers) {
       if (fetcher.first && fetcher.second > m_lastSegmentNo) {
         // Stop trying to fetch segments that are not part of the content
@@ -188,8 +204,10 @@ PipelineInterests::handleData(const Interest& interest, const Data& data, size_t
     }
   }
 
-  deferredFetchNextSegment(pipeNo);
-  //fetchNextSegment(pipeNo);
+  if (m_startWait)
+    fetchNextSegment(pipeNo);
+  else
+    deferredFetchNextSegment(pipeNo);
 }
 
 void PipelineInterests::handleFail(const std::string& reason, std::size_t pipeNo)

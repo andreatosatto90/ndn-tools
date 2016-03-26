@@ -83,8 +83,10 @@ protected:
   virtual void
   handleTimeout(const Interest& interest, const std::string& reason);
 
-protected:
+public:
   const Name m_prefix;
+
+protected:
   Face& m_face;
   shared_ptr<DataFetcher> fetcher;
 };

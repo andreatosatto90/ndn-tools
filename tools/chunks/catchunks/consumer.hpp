@@ -67,11 +67,14 @@ public:
    * @brief Run the consumer
    */
   void
-  run(DiscoverVersion& discover, PipelineInterests& pipeline);
+  run(DiscoverVersion& discover, PipelineInterests& pipeline, bool noDiscovery = false);
 
 private:
   void
   runWithData(const Data& data);
+
+  void
+  runWithName(Name nameWithVersion);
 
   void
   onData(const Interest& interest, const Data& data);

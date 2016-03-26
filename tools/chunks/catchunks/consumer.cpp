@@ -44,19 +44,27 @@ Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostrea
 {
 }
 
-void Consumer::run(DiscoverVersion& discover, PipelineInterests& pipeline)
+void
+Consumer::run(DiscoverVersion& discover, PipelineInterests& pipeline, bool noDiscovery)
 {
   m_pipeline = &pipeline;
   m_nextToPrint = 0;
 
-  discover.onDiscoverySuccess.connect(bind(&Consumer::runWithData, this, _1));
-  discover.onDiscoveryFailure.connect(bind(&Consumer::onFailure, this, _1));
+  if (!noDiscovery) {
+    discover.onDiscoverySuccess.connect(bind(&Consumer::runWithData, this, _1));
+    discover.onDiscoveryFailure.connect(bind(&Consumer::onFailure, this, _1));
+    discover.run();
+  }
+  else{
+    runWithName(discover.m_prefix);
+  }
 
-  discover.run();
+
   m_face.processEvents();
 }
 
-void Consumer::runWithData(const Data& data)
+void
+Consumer::runWithData(const Data& data)
 {
   m_nReceivedSegments = 0;
   m_lastSegmentNo = 0;
@@ -70,6 +78,27 @@ void Consumer::runWithData(const Data& data)
   m_pipeline->runWithExcludedSegment(data,
                                      bind(&Consumer::onData, this, _1, _2),
                                      bind(&Consumer::onFailure, this, _1));
+
+  m_startTime = time::steady_clock::now();
+  m_lastPrintTime = m_startTime;
+
+  if (m_printStat) {
+    m_scheduler.scheduleEvent(time::seconds(1), bind(&Consumer::printStatistics, this));
+  }
+}
+
+void
+Consumer::runWithName(Name nameWithVersion)
+{
+  m_nReceivedSegments = 0;
+  m_lastSegmentNo = std::numeric_limits<uint64_t>::max();
+  m_receivedBytes = 0;
+  m_lastReceivedBytes = 0;
+
+
+  m_pipeline->runWithName(nameWithVersion,
+                          bind(&Consumer::onData, this, _1, _2),
+                          bind(&Consumer::onFailure, this, _1));
 
   m_startTime = time::steady_clock::now();
   m_lastPrintTime = m_startTime;
@@ -133,6 +162,10 @@ Consumer::printStatistics()
               << static_cast<double>(m_lastReceivedBytes/1000) / (lastRunningTime.count() / 1000) << " KB/s \t"
               << std::endl;
   }
+  else {
+    std::cerr << "Waiting first data" << std::endl;
+  }
+
   m_lastPrintTime = time::steady_clock::now();
   m_lastReceivedBytes = 0;
 
