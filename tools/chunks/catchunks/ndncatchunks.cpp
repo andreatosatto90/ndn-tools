@@ -46,7 +46,9 @@ main(int argc, char** argv)
   size_t maxPipelineSize(1);
   int maxRetriesAfterVersionFound(1);
   std::string uri;
+
   bool printStat = false;
+  uint64_t randomWaitMax = 0;
 
   namespace po = boost::program_options;
   po::options_description visibleDesc("Options");
@@ -67,6 +69,8 @@ main(int argc, char** argv)
     ("verbose,v",   po::bool_switch(&options.isVerbose), "turn on verbose output")
     ("version,V",   "print program version and exit")
     ("printStat,S", po::bool_switch(&printStat), "turn on statistics output")
+    ("randomWait,w",  po::value<uint64_t>(&randomWaitMax)->default_value(randomWaitMax),
+                    "maximum wait time before sending an interest")
     ;
 
   po::options_description hiddenDesc("Hidden options");
@@ -156,12 +160,12 @@ main(int argc, char** argv)
 
     PipelineInterests::Options optionsPipeline(options);
     optionsPipeline.maxPipelineSize = maxPipelineSize;
-    PipelineInterests pipeline(face, optionsPipeline);
+    PipelineInterests pipeline(face, optionsPipeline, randomWaitMax);
 
     BOOST_ASSERT(discover != nullptr);
 
     tracepoint(chunksLog, cat_started, maxPipelineSize, options.interestLifetime.count(),
-               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh);
+               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, randomWaitMax);
 
     consumer.run(*discover, pipeline);
   }

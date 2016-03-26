@@ -16,13 +16,15 @@ TRACEPOINT_EVENT(
     int, maxPipelineSize,
     int, interestLifetime,
     int, maxRetries,
-    int, mustBeFresh
+    int, mustBeFresh,
+    int, randomWaitMax
   ),
   TP_FIELDS(
     ctf_integer(int, max_pipeline_size, maxPipelineSize)
     ctf_integer(int, interest_lifetime, interestLifetime)
     ctf_integer(int, max_retries, maxRetries)
     ctf_integer(int, must_be_fresh, mustBeFresh)
+    ctf_integer(int, random_wait_max, randomWaitMax)
   )
 )
 

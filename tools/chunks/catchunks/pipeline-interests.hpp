@@ -73,7 +73,7 @@ public:
    * configuration the method runWithExcludedSegment must be called to run the Pipeline.
    */
   explicit
-  PipelineInterests(Face& face, const Options& options = Options());
+  PipelineInterests(Face& face, const Options& options = Options(), uint64_t randomWaitMax = 0);
 
   ~PipelineInterests();
 
@@ -107,6 +107,9 @@ private:
   fetchNextSegment(size_t pipeNo);
 
   void
+  deferredFetchNextSegment(size_t pipeNo);
+
+  void
   fail(const std::string& reason);
 
   void
@@ -135,6 +138,10 @@ private:
    * fatal error for the pipeline
    */
   bool m_hasFailure;
+
+  uint64_t m_randomWaitMax;
+  Scheduler m_scheduler;
+  std::mt19937 m_randomGen;
 };
 
 } // namespace chunks

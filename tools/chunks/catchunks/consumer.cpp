@@ -31,7 +31,8 @@
 namespace ndn {
 namespace chunks {
 
-Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os, bool printStat)
+Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os,
+                   bool printStat)
   : m_face(face)
   , m_validator(validator)
   , m_pipeline(nullptr)
@@ -57,6 +58,11 @@ void Consumer::run(DiscoverVersion& discover, PipelineInterests& pipeline)
 
 void Consumer::runWithData(const Data& data)
 {
+  m_nReceivedSegments = 0;
+  m_lastSegmentNo = 0;
+  m_receivedBytes = 0;
+  m_lastReceivedBytes = 0;
+
   m_validator.validate(data,
                        bind(&Consumer::onDataValidated, this, _1),
                        bind(&Consumer::onFailure, this, _2));
@@ -65,15 +71,12 @@ void Consumer::runWithData(const Data& data)
                                      bind(&Consumer::onData, this, _1, _2),
                                      bind(&Consumer::onFailure, this, _1));
 
-  m_nReceivedSegments = 0;
-  m_lastSegmentNo = 0;
-  m_receivedBytes = 0;
-  m_lastReceivedBytes = 0;
   m_startTime = time::steady_clock::now();
   m_lastPrintTime = m_startTime;
 
-  if (m_printStat)
+  if (m_printStat) {
     m_scheduler.scheduleEvent(time::seconds(1), bind(&Consumer::printStatistics, this));
+  }
 }
 
 void
@@ -133,8 +136,9 @@ Consumer::printStatistics()
   m_lastPrintTime = time::steady_clock::now();
   m_lastReceivedBytes = 0;
 
-  if (m_nReceivedSegments < m_lastSegmentNo)
+  if (m_nReceivedSegments < m_lastSegmentNo) {
     m_scheduler.scheduleEvent(time::seconds(1), bind(&Consumer::printStatistics, this));
+  }
 }
 
 void

@@ -60,7 +60,8 @@ public:
   /**
    * @brief Create the consumer
    */
-  Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os = std::cout, bool printStat = false);
+  Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os = std::cout,
+           bool printStat = false);
 
   /**
    * @brief Run the consumer
