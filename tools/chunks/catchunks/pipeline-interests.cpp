@@ -113,7 +113,7 @@ PipelineInterests::fetchNextSegment(std::size_t pipeNo)
 
   // Send interest for next segment
   if (m_options.isVerbose)
-    std::cerr << "Requesting segment #" << m_nextSegmentNo << std::endl;
+    std::cerr << "Pipe: " << pipeNo << " Requesting segment #" << m_nextSegmentNo << std::endl;
 
   Interest interest(Name(m_prefix).appendSegment(m_nextSegmentNo));
   interest.setInterestLifetime(m_options.interestLifetime);
@@ -183,7 +183,10 @@ PipelineInterests::handleData(const Interest& interest, const Data& data, size_t
   BOOST_ASSERT(data.getName().equals(interest.getName()));
 
   if (m_options.isVerbose)
-    std::cerr << "Received segment #" << data.getName()[-1].toSegment() << std::endl;
+   std::cerr << "Pipe serving: " << pipeNo << std::endl;
+
+  if (m_options.isVerbose)
+    std::cerr << "Pipe: " << pipeNo << " Received segment #" << data.getName()[-1].toSegment() << std::endl;
 
   m_onData(interest, data);
 
