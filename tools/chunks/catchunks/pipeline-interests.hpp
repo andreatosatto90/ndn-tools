@@ -43,11 +43,13 @@ public:
   PipelineInterestsOptions(const Options& options = Options())
     : Options(options)
     , maxPipelineSize(1)
+    , startPipelineSize(1)
   {
   }
 
 public:
   size_t maxPipelineSize;
+  size_t startPipelineSize;
 };
 
 /**

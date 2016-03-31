@@ -44,7 +44,7 @@ PipelineInterests::PipelineInterests(Face& face, const Options& options, uint64_
   , m_scheduler(face.getIoService())
   , m_startWait(startWait)
 {
-  m_segmentFetchers.resize(m_options.maxPipelineSize);
+  m_segmentFetchers.resize(m_options.startPipelineSize);
   std::random_device rd;
   m_randomGen.seed(rd());
 }
@@ -72,7 +72,7 @@ PipelineInterests::runWithExcludedSegment(const Data& data, DataCallback onData,
   }
 
   // if the FinalBlockId is unknown, this could potentially request non-existent segments
-  for (size_t nRequestedSegments = 0; nRequestedSegments < m_options.maxPipelineSize;
+  for (size_t nRequestedSegments = 0; nRequestedSegments < m_options.startPipelineSize;
        nRequestedSegments++) {
     deferredFetchNextSegment(nRequestedSegments);
     //if (!fetchNextSegment(nRequestedSegments)) // all segments have been requested
@@ -91,7 +91,7 @@ PipelineInterests::runWithName(Name nameWithVersion, DataCallback onData, Failur
   m_excludeSegmentNo = std::numeric_limits<uint64_t>::max();
 
   // if the FinalBlockId is unknown, this could potentially request non-existent segments
-  for (size_t nRequestedSegments = 0; nRequestedSegments < m_options.maxPipelineSize;
+  for (size_t nRequestedSegments = 0; nRequestedSegments < m_options.startPipelineSize;
        nRequestedSegments++) {
     deferredFetchNextSegment(nRequestedSegments);
   }
@@ -182,8 +182,7 @@ PipelineInterests::handleData(const Interest& interest, const Data& data, size_t
 
   BOOST_ASSERT(data.getName().equals(interest.getName()));
 
-  if (m_options.isVerbose)
-   std::cerr << "Pipe serving: " << pipeNo << std::endl;
+  //std::cerr << data.getTag<lp::StrategyNotify>() << std::endl;
 
   if (m_options.isVerbose)
     std::cerr << "Pipe: " << pipeNo << " Received segment #" << data.getName()[-1].toSegment() << std::endl;
@@ -213,7 +212,8 @@ PipelineInterests::handleData(const Interest& interest, const Data& data, size_t
     deferredFetchNextSegment(pipeNo);
 }
 
-void PipelineInterests::handleFail(const std::string& reason, std::size_t pipeNo)
+void
+PipelineInterests::handleFail(const std::string& reason, std::size_t pipeNo)
 {
   if (m_hasError)
     return;

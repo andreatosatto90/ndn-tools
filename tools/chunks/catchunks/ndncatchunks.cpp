@@ -44,6 +44,7 @@ main(int argc, char** argv)
   Options options;
   std::string discoverType("fixed");
   size_t maxPipelineSize(1);
+  size_t startPipelineSize(1);
   int maxRetriesAfterVersionFound(1);
   std::string uri;
 
@@ -61,7 +62,9 @@ main(int argc, char** argv)
     ("fresh,f",     po::bool_switch(&options.mustBeFresh), "only return fresh content")
     ("lifetime,l",  po::value<uint64_t>()->default_value(options.interestLifetime.count()),
                     "lifetime of expressed Interests, in milliseconds")
-    ("pipeline,p",  po::value<size_t>(&maxPipelineSize)->default_value(maxPipelineSize),
+    ("pipelineStart,p",  po::value<size_t>(&startPipelineSize)->default_value(startPipelineSize),
+                    "initial max size of the Interest pipeline")
+    ("pipelineMax,m",  po::value<size_t>(&maxPipelineSize)->default_value(maxPipelineSize),
                     "maximum size of the Interest pipeline")
     ("retries,r",   po::value<int>(&options.maxRetriesOnTimeoutOrNack)->default_value(options.maxRetriesOnTimeoutOrNack),
                     "maximum number of retries in case of Nack or timeout (-1 = no limit)")
@@ -164,6 +167,7 @@ main(int argc, char** argv)
 
     PipelineInterests::Options optionsPipeline(options);
     optionsPipeline.maxPipelineSize = maxPipelineSize;
+    optionsPipeline.startPipelineSize = startPipelineSize;
     PipelineInterests pipeline(face, optionsPipeline, randomWaitMax, startWait);
 
     BOOST_ASSERT(discover != nullptr);
