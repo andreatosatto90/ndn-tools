@@ -172,7 +172,7 @@ main(int argc, char** argv)
 
     BOOST_ASSERT(discover != nullptr);
 
-    tracepoint(chunksLog, cat_started, maxPipelineSize, options.interestLifetime.count(),
+    tracepoint(chunksLog, cat_started, startPipelineSize, options.interestLifetime.count(),
                options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, randomWaitMax, startWait);
 
     consumer.run(*discover, pipeline, noDiscovery);
