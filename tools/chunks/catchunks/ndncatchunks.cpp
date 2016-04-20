@@ -37,16 +37,29 @@
 namespace ndn {
 namespace chunks {
 
+void
+handleSIGINT(const boost::system::error_code& errorCode, Consumer& consumer) {
+  if (errorCode == boost::asio::error::operation_aborted) {
+    return;
+  }
+
+  consumer.cancel();
+  tracepoint(chunksLog, cat_stopped, 4);
+}
+
 static int
 main(int argc, char** argv)
 {
   std::string programName(argv[0]);
   Options options;
   std::string discoverType("fixed");
-  size_t maxPipelineSize(1);
+  size_t maxPipelineSize(0);
   size_t startPipelineSize(1);
   int maxRetriesAfterVersionFound(1);
   std::string uri;
+
+
+  int pipelineIncrease(0);
 
   bool printStat = false;
   uint64_t randomWaitMax = 0;
@@ -65,7 +78,9 @@ main(int argc, char** argv)
     ("pipelineStart,p",  po::value<size_t>(&startPipelineSize)->default_value(startPipelineSize),
                     "initial max size of the Interest pipeline")
     ("pipelineMax,m",  po::value<size_t>(&maxPipelineSize)->default_value(maxPipelineSize),
-                    "maximum size of the Interest pipeline")
+                    "maximum size of the Interest pipeline (0 = same as start pipeline size)")
+    ("pipelineIncrease,c",  po::value<int>(&pipelineIncrease)->default_value(pipelineIncrease),
+                    "add/substract value to pipeline size each second")
     ("retries,r",   po::value<int>(&options.maxRetriesOnTimeoutOrNack)->default_value(options.maxRetriesOnTimeoutOrNack),
                     "maximum number of retries in case of Nack or timeout (-1 = no limit)")
     ("retries-iterative,i", po::value<int>(&maxRetriesAfterVersionFound)->default_value(maxRetriesAfterVersionFound),
@@ -128,8 +143,16 @@ main(int argc, char** argv)
     return 2;
   }
 
-  if (maxPipelineSize < 1 || maxPipelineSize > 65536) {
-    std::cerr << "ERROR: pipeline size must be between 1 and 65536" << std::endl;
+  if (startPipelineSize < 1 || startPipelineSize > 65536) {
+    std::cerr << "ERROR: start pipeline size must be between 1 and 65536" << std::endl;
+    return 2;
+  }
+
+  if (maxPipelineSize == 0)
+    maxPipelineSize = startPipelineSize;
+
+  if (maxPipelineSize < startPipelineSize || maxPipelineSize > 65536) {
+    std::cerr << "ERROR: max pipeline size must be between pipelineStart and 65536" << std::endl;
     return 2;
   }
 
@@ -147,6 +170,8 @@ main(int argc, char** argv)
 
   try {
     Face face;
+    boost::asio::signal_set m_signalSetInt(face.getIoService(), SIGINT);
+
 
     unique_ptr<DiscoverVersion> discover;
     if (discoverType == "fixed") {
@@ -163,7 +188,8 @@ main(int argc, char** argv)
     }
 
     ValidatorNull validator;
-    Consumer consumer(face, validator, options.isVerbose, std::cout, printStat);
+    Consumer consumer(face, validator, options.isVerbose, std::cout, printStat, pipelineIncrease);
+    m_signalSetInt.async_wait(bind(ndn::chunks::handleSIGINT, _1, std::ref(consumer)));
 
     PipelineInterests::Options optionsPipeline(options);
     optionsPipeline.maxPipelineSize = maxPipelineSize;
@@ -176,6 +202,7 @@ main(int argc, char** argv)
                options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, randomWaitMax, startWait);
 
     consumer.run(*discover, pipeline, noDiscovery);
+    m_signalSetInt.cancel();
   }
   catch (const Consumer::ApplicationNackError& e) {
     tracepoint(chunksLog, cat_stopped, 3);

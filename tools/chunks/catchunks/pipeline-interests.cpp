@@ -43,8 +43,12 @@ PipelineInterests::PipelineInterests(Face& face, const Options& options, uint64_
   , m_randomWaitMax(randomWaitMax)
   , m_scheduler(face.getIoService())
   , m_startWait(startWait)
+  , m_currentWindowSize(m_options.startPipelineSize)
+  , m_calculatedWindowSize(m_options.startPipelineSize)
 {
-  m_segmentFetchers.resize(m_options.startPipelineSize);
+  BOOST_ASSERT(m_options.maxPipelineSize >= m_options.startPipelineSize);
+
+  m_segmentFetchers.resize(m_options.maxPipelineSize);
   std::random_device rd;
   m_randomGen.seed(rd());
 }
@@ -78,6 +82,13 @@ PipelineInterests::runWithExcludedSegment(const Data& data, DataCallback onData,
     //if (!fetchNextSegment(nRequestedSegments)) // all segments have been requested
       //break;
   }
+
+  for (size_t nWaitingSegments = m_options.startPipelineSize; nWaitingSegments < m_options.maxPipelineSize;
+       nWaitingSegments++) {
+    m_waitingPipes.push(nWaitingSegments);
+  }
+
+  m_currentWindowSize = m_options.startPipelineSize;
 }
 
 void
@@ -95,6 +106,13 @@ PipelineInterests::runWithName(Name nameWithVersion, DataCallback onData, Failur
        nRequestedSegments++) {
     deferredFetchNextSegment(nRequestedSegments);
   }
+
+  for (size_t nWaitingSegments = m_options.startPipelineSize; nWaitingSegments < m_options.maxPipelineSize;
+       nWaitingSegments++) {
+    m_waitingPipes.push(nWaitingSegments);
+  }
+
+  m_currentWindowSize = m_options.startPipelineSize;
 }
 
 bool
@@ -105,17 +123,33 @@ PipelineInterests::fetchNextSegment(std::size_t pipeNo)
     return false;
   }
 
-  if (m_nextSegmentNo == m_excludeSegmentNo)
-    m_nextSegmentNo++;
 
-  if (m_hasFinalBlockId && m_nextSegmentNo > m_lastSegmentNo)
+  uint64_t segmentNo = m_nextSegmentNo;
+
+  if (m_waitingSegments.size() > 0) {
+    segmentNo = m_waitingSegments.front();
+    m_waitingSegments.pop();
+
+    std::cerr << "Pipe: " << pipeNo << " Requesting segment #" << segmentNo << " next segment no " << m_nextSegmentNo << std::endl;
+
+  }
+  else{
+    ++m_nextSegmentNo;
+  }
+
+  if (segmentNo == m_excludeSegmentNo) {
+    ++segmentNo;
+  }
+
+  if (m_hasFinalBlockId && segmentNo > m_lastSegmentNo)
    return false;
+
 
   // Send interest for next segment
   if (m_options.isVerbose)
-    std::cerr << "Pipe: " << pipeNo << " Requesting segment #" << m_nextSegmentNo << std::endl;
+    std::cerr << "Pipe: " << pipeNo << " Requesting segment #" << segmentNo << std::endl;
 
-  Interest interest(Name(m_prefix).appendSegment(m_nextSegmentNo));
+  Interest interest(Name(m_prefix).appendSegment(segmentNo));
   interest.setInterestLifetime(m_options.interestLifetime);
   interest.setMustBeFresh(m_options.mustBeFresh);
   interest.setMaxSuffixComponents(1);
@@ -128,11 +162,11 @@ PipelineInterests::fetchNextSegment(std::size_t pipeNo)
                                     bind(&PipelineInterests::handleData, this, _1, _2, pipeNo),
                                     bind(&PipelineInterests::handleFail, this, _2, pipeNo),
                                     bind(&PipelineInterests::handleFail, this, _2, pipeNo),
-                                    m_options.isVerbose);
+                                    m_options.isVerbose,
+                                    bind(&PipelineInterests::canSend, this, segmentNo, pipeNo));
 
-  m_segmentFetchers[pipeNo] = make_pair(fetcher, m_nextSegmentNo);
+  m_segmentFetchers[pipeNo] = make_pair(fetcher, segmentNo);
 
-  m_nextSegmentNo++;
   return true;
 }
 
@@ -160,6 +194,24 @@ PipelineInterests::cancel()
       fetcher.first->cancel();
 
   m_segmentFetchers.clear();
+}
+
+bool
+PipelineInterests::setWindowSize(uint64_t size)
+{
+  if (size >= m_options.startPipelineSize && size <= m_options.maxPipelineSize) {
+    m_calculatedWindowSize = size;
+    std::cerr << "Window size: " << m_calculatedWindowSize << std::endl;
+    return true;
+  }
+
+  return false;
+}
+
+uint64_t
+PipelineInterests::getWindowSize() const
+{
+  return m_calculatedWindowSize;
 }
 
 void
@@ -206,10 +258,21 @@ PipelineInterests::handleData(const Interest& interest, const Data& data, size_t
     }
   }
 
-  if (m_startWait)
-    fetchNextSegment(pipeNo);
-  else
-    deferredFetchNextSegment(pipeNo);
+  m_currentWindowSize--;
+  m_waitingPipes.push(pipeNo);
+
+  while (m_currentWindowSize < m_calculatedWindowSize) {
+    if (m_startWait)
+      fetchNextSegment(m_waitingPipes.front());
+    else
+      deferredFetchNextSegment(m_waitingPipes.front());
+
+    m_waitingPipes.pop();
+
+    ++m_currentWindowSize;
+  }
+
+  // TODO handle window decrease
 }
 
 void
@@ -241,6 +304,17 @@ PipelineInterests::handleFail(const std::string& reason, std::size_t pipeNo)
       m_hasFailure = true;
     }
   }
+}
+
+bool
+PipelineInterests::canSend(uint64_t segmentNo, uint64_t pipeNo)
+{
+  if (m_currentWindowSize <= m_calculatedWindowSize)
+    return true;
+
+  m_waitingPipes.push(pipeNo);
+  m_waitingSegments.push(segmentNo);
+  return false;
 }
 
 } // namespace chunks

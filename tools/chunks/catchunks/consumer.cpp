@@ -32,7 +32,7 @@ namespace ndn {
 namespace chunks {
 
 Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os,
-                   bool printStat)
+                   bool printStat, int pipelineIncrease)
   : m_face(face)
   , m_validator(validator)
   , m_pipeline(nullptr)
@@ -41,6 +41,7 @@ Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostrea
   , m_isVerbose(isVerbose)
   , m_printStat(printStat)
   , m_scheduler(face.getIoService())
+  , m_windowMultiplier(pipelineIncrease)
 {
 }
 
@@ -61,6 +62,12 @@ Consumer::run(DiscoverVersion& discover, PipelineInterests& pipeline, bool noDis
 
 
   m_face.processEvents();
+}
+
+void
+Consumer::cancel()
+{
+  m_face.getIoService().stop();
 }
 
 void
@@ -169,9 +176,16 @@ Consumer::printStatistics()
   m_lastPrintTime = time::steady_clock::now();
   m_lastReceivedBytes = 0;
 
+  if(!m_pipeline->setWindowSize(m_pipeline->getWindowSize() + m_windowMultiplier)) {
+    m_windowMultiplier *= -1;
+    m_pipeline->setWindowSize(m_pipeline->getWindowSize() + m_windowMultiplier);
+  }
+
   if (m_nReceivedSegments < m_lastSegmentNo) {
     m_scheduler.scheduleEvent(time::seconds(1), bind(&Consumer::printStatistics, this));
   }
+  else
+    m_face.getIoService().stop();
 }
 
 void

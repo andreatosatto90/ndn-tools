@@ -60,14 +60,17 @@ public:
   /**
    * @brief Create the consumer
    */
-  Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os = std::cout,
-           bool printStat = false);
+  Consumer(Face& face, Validator& validator, bool isVerbose,
+           std::ostream& os = std::cout, bool printStat = false, int pipelineIncrease = 0);
 
   /**
    * @brief Run the consumer
    */
   void
   run(DiscoverVersion& discover, PipelineInterests& pipeline, bool noDiscovery = false);
+
+  void
+  cancel();
 
 private:
   void
@@ -110,6 +113,8 @@ private:
 
   uint64_t m_lastReceivedBytes;
   time::steady_clock::TimePoint m_lastPrintTime;
+
+  int m_windowMultiplier;
 
 PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   std::map<uint64_t, shared_ptr<const Data>> m_bufferedData;

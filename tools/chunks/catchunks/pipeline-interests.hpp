@@ -30,6 +30,7 @@
 
 #include "core/common.hpp"
 #include "options.hpp"
+#include <queue>
 
 namespace ndn {
 namespace chunks {
@@ -102,6 +103,12 @@ public:
   void
   cancel();
 
+  bool
+  setWindowSize(uint64_t size);
+
+  uint64_t
+  getWindowSize() const;
+
 private:
   /**
    * @brief fetch the next segment that has not been requested yet
@@ -122,6 +129,9 @@ private:
 
   void
   handleFail(const std::string& reason, size_t pipeNo);
+
+  bool
+  canSend(uint64_t segmentNo, uint64_t pipeNo);
 
 private:
   Name m_prefix;
@@ -148,6 +158,12 @@ private:
   Scheduler m_scheduler;
   std::mt19937 m_randomGen;
   bool m_startWait;
+
+  // Congestion control
+  uint64_t m_currentWindowSize;
+  uint64_t m_calculatedWindowSize;
+  std::queue<uint64_t/*Pipe number*/>  m_waitingPipes;
+  std::queue<uint64_t/*Segment number*/>  m_waitingSegments;
 };
 
 } // namespace chunks

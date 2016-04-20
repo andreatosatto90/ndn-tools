@@ -62,6 +62,8 @@ public:
 
   typedef function<void(const Interest& interest, const std::string& reason)> FailureCallback;
 
+  typedef function<bool(uint64_t, uint64_t)> CanSendCallback;
+
   /**
    * @brief instantiate a DataFetcher object and start fetching data
    *
@@ -70,7 +72,7 @@ public:
   static shared_ptr<DataFetcher>
   fetch(Face& face, const Interest& interest, int maxNackRetries, int maxTimeoutRetries,
         DataCallback onData, FailureCallback onTimeout, FailureCallback onNack,
-        bool isVerbose);
+        bool isVerbose, CanSendCallback canSend);
 
   /**
    * @brief stop data fetching without error and calling any callback
@@ -93,7 +95,7 @@ public:
 private:
   DataFetcher(Face& face, int maxNackRetries, int maxTimeoutRetries,
               DataCallback onData, FailureCallback onNack, FailureCallback onTimeout,
-              bool isVerbose);
+              bool isVerbose, CanSendCallback canSend);
 
   void
   expressInterest(const Interest& interest, const shared_ptr<DataFetcher>& self);
@@ -124,6 +126,8 @@ private:
   bool m_isVerbose;
   bool m_isStopped;
   bool m_hasError;
+
+  CanSendCallback m_canSend;
 };
 
 } // namespace chunks

@@ -42,6 +42,7 @@ public:
   int maxRetriesOnTimeoutOrNack;
   bool mustBeFresh;
   bool isVerbose;
+  int pipelineIncrease;
 };
 
 } // namespace chunks

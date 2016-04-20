@@ -38,7 +38,7 @@ const time::milliseconds DataFetcher::MAX_CONGESTION_BACKOFF_TIME = time::second
 shared_ptr<DataFetcher>
 DataFetcher::fetch(Face& face, const Interest& interest, int maxNackRetries, int maxTimeoutRetries,
                    DataCallback onData, FailureCallback onNack, FailureCallback onTimeout,
-                   bool isVerbose)
+                   bool isVerbose, CanSendCallback canSend)
 {
   auto dataFetcher = shared_ptr<DataFetcher>(new DataFetcher(face,
                                                              maxNackRetries,
@@ -46,7 +46,8 @@ DataFetcher::fetch(Face& face, const Interest& interest, int maxNackRetries, int
                                                              std::move(onData),
                                                              std::move(onNack),
                                                              std::move(onTimeout),
-                                                             isVerbose));
+                                                             isVerbose,
+                                                             std::move(canSend)));
   dataFetcher->expressInterest(interest, dataFetcher);
 
   return dataFetcher;
@@ -54,7 +55,7 @@ DataFetcher::fetch(Face& face, const Interest& interest, int maxNackRetries, int
 
 DataFetcher::DataFetcher(Face& face, int maxNackRetries, int maxTimeoutRetries,
                          DataCallback onData, FailureCallback onNack, FailureCallback onTimeout,
-                         bool isVerbose)
+                         bool isVerbose, CanSendCallback canSend)
   : m_face(face)
   , m_scheduler(m_face.getIoService())
   , m_onData(std::move(onData))
@@ -68,6 +69,7 @@ DataFetcher::DataFetcher(Face& face, int maxNackRetries, int maxTimeoutRetries,
   , m_isVerbose(isVerbose)
   , m_isStopped(false)
   , m_hasError(false)
+  , m_canSend(canSend)
 {
   BOOST_ASSERT(m_onData != nullptr);
 }
@@ -85,6 +87,11 @@ DataFetcher::cancel()
 void
 DataFetcher::expressInterest(const Interest& interest, const shared_ptr<DataFetcher>& self)
 {
+  if (m_canSend != nullptr && !m_canSend) {
+    cancel();
+    return;
+  }
+
   m_nCongestionRetries = 0;
   m_interestId = m_face.expressInterest(interest,
                                         bind(&DataFetcher::handleData, this, _1, _2, self),
