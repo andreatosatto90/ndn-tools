@@ -64,6 +64,8 @@ public:
 
   typedef function<bool(uint64_t, uint64_t)> CanSendCallback;
 
+  typedef function<void(const Interest&, const Data&, const shared_ptr<DataFetcher>&)> DataFetcherDoneCallback;
+
   /**
    * @brief instantiate a DataFetcher object and start fetching data
    *
@@ -71,8 +73,8 @@ public:
    */
   static shared_ptr<DataFetcher>
   fetch(Face& face, const Interest& interest, int maxNackRetries, int maxTimeoutRetries,
-        DataCallback onData, FailureCallback onTimeout, FailureCallback onNack,
-        bool isVerbose, CanSendCallback canSend);
+        DataFetcherDoneCallback onData, FailureCallback onNack, FailureCallback onTimeout, FailureCallback onError,
+        function<time::milliseconds()> getInterstLifetime, bool isVerbose, CanSendCallback canSend);
 
   /**
    * @brief stop data fetching without error and calling any callback
@@ -92,10 +94,13 @@ public:
     return m_hasError;
   }
 
+  time::milliseconds
+  getRetrieveTime() const;
+
 private:
   DataFetcher(Face& face, int maxNackRetries, int maxTimeoutRetries,
-              DataCallback onData, FailureCallback onNack, FailureCallback onTimeout,
-              bool isVerbose, CanSendCallback canSend);
+              DataFetcherDoneCallback onData, FailureCallback onNack, FailureCallback onTimeout, FailureCallback onError,
+              function<time::milliseconds()> getInterstLifetime, bool isVerbose, CanSendCallback canSend);
 
   void
   expressInterest(const Interest& interest, const shared_ptr<DataFetcher>& self);
@@ -113,9 +118,11 @@ private:
   Face& m_face;
   Scheduler m_scheduler;
   const PendingInterestId* m_interestId;
-  DataCallback m_onData;
+  DataFetcherDoneCallback m_onData;
   FailureCallback m_onNack;
   FailureCallback m_onTimeout;
+  FailureCallback m_onError;
+  function<time::milliseconds()> m_getInterstLifetime;
 
   int m_maxNackRetries;
   int m_maxTimeoutRetries;
@@ -128,6 +135,10 @@ private:
   bool m_hasError;
 
   CanSendCallback m_canSend;
+
+public: //TODO private
+  std::vector<time::steady_clock::TimePoint> m_transmissionTimes;
+  time::steady_clock::TimePoint m_arrivalTime;
 };
 
 } // namespace chunks

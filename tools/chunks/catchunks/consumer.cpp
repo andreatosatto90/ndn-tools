@@ -43,6 +43,7 @@ Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostrea
   , m_scheduler(face.getIoService())
   , m_windowMultiplier(pipelineIncrease)
 {
+  m_statIntervalMs = 500;
 }
 
 void
@@ -90,7 +91,7 @@ Consumer::runWithData(const Data& data)
   m_lastPrintTime = m_startTime;
 
   if (m_printStat) {
-    m_scheduler.scheduleEvent(time::seconds(1), bind(&Consumer::printStatistics, this));
+    m_scheduler.scheduleEvent(time::milliseconds(m_statIntervalMs), bind(&Consumer::printStatistics, this));
   }
 }
 
@@ -164,9 +165,11 @@ Consumer::printStatistics()
     int perc = (static_cast<float>(m_nReceivedSegments) / m_lastSegmentNo) * 100;
     std::cerr << perc << "% \t"
               << " T " << static_cast<double>(m_receivedBytes/1000) << " KB \t"
-              << static_cast<double>(m_receivedBytes/1000) / (runningTime.count() / 1000) << " KB/s \t"
+              << static_cast<double>(m_receivedBytes) / (runningTime.count()) << " KB/s \t"
               << " C " << static_cast<double>(m_lastReceivedBytes/1000) << " KB  \t"
-              << static_cast<double>(m_lastReceivedBytes/1000) / (lastRunningTime.count() / 1000) << " KB/s \t"
+              << static_cast<double>(m_lastReceivedBytes) / (lastRunningTime.count()) << " KB/s \t"
+              << "Window " << m_pipeline->getWindowSize() << "\t"
+              << "Rtt " << int(m_pipeline->rttEstimator.getRttMean()) << "\t"
               << std::endl;
   }
   else {
@@ -176,13 +179,13 @@ Consumer::printStatistics()
   m_lastPrintTime = time::steady_clock::now();
   m_lastReceivedBytes = 0;
 
-  if(!m_pipeline->setWindowSize(m_pipeline->getWindowSize() + m_windowMultiplier)) {
+  /*if(!m_pipeline->setWindowSize(m_pipeline->getWindowSize() + m_windowMultiplier)) {
     m_windowMultiplier *= -1;
     m_pipeline->setWindowSize(m_pipeline->getWindowSize() + m_windowMultiplier);
-  }
+  }*/
 
   if (m_nReceivedSegments < m_lastSegmentNo) {
-    m_scheduler.scheduleEvent(time::seconds(1), bind(&Consumer::printStatistics, this));
+    m_scheduler.scheduleEvent(time::milliseconds(m_statIntervalMs), bind(&Consumer::printStatistics, this));
   }
   else
     m_face.getIoService().stop();

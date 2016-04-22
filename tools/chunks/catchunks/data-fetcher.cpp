@@ -37,7 +37,8 @@ const time::milliseconds DataFetcher::MAX_CONGESTION_BACKOFF_TIME = time::second
 
 shared_ptr<DataFetcher>
 DataFetcher::fetch(Face& face, const Interest& interest, int maxNackRetries, int maxTimeoutRetries,
-                   DataCallback onData, FailureCallback onNack, FailureCallback onTimeout,
+                   DataFetcherDoneCallback onData, FailureCallback onNack, FailureCallback onTimeout,
+                   FailureCallback onError,function<time::milliseconds()> getInterstLifetime,
                    bool isVerbose, CanSendCallback canSend)
 {
   auto dataFetcher = shared_ptr<DataFetcher>(new DataFetcher(face,
@@ -46,6 +47,8 @@ DataFetcher::fetch(Face& face, const Interest& interest, int maxNackRetries, int
                                                              std::move(onData),
                                                              std::move(onNack),
                                                              std::move(onTimeout),
+                                                             std::move(onError),
+                                                             std::move(getInterstLifetime),
                                                              isVerbose,
                                                              std::move(canSend)));
   dataFetcher->expressInterest(interest, dataFetcher);
@@ -54,13 +57,16 @@ DataFetcher::fetch(Face& face, const Interest& interest, int maxNackRetries, int
 }
 
 DataFetcher::DataFetcher(Face& face, int maxNackRetries, int maxTimeoutRetries,
-                         DataCallback onData, FailureCallback onNack, FailureCallback onTimeout,
+                         DataFetcherDoneCallback onData, FailureCallback onNack, FailureCallback onTimeout,
+                         FailureCallback onError, function<time::milliseconds()> getInterstLifetime,
                          bool isVerbose, CanSendCallback canSend)
   : m_face(face)
   , m_scheduler(m_face.getIoService())
   , m_onData(std::move(onData))
   , m_onNack(std::move(onNack))
   , m_onTimeout(std::move(onTimeout))
+  , m_onError(std::move(onError))
+  , m_getInterstLifetime(getInterstLifetime)
   , m_maxNackRetries(maxNackRetries)
   , m_maxTimeoutRetries(maxTimeoutRetries)
   , m_nNacks(0)
@@ -84,6 +90,16 @@ DataFetcher::cancel()
   }
 }
 
+time::milliseconds
+DataFetcher::getRetrieveTime() const
+{
+  if (!m_isStopped || m_transmissionTimes.empty())
+    return time::milliseconds(0);
+
+  // TODO m_arrivalTime not set
+  return time::duration_cast<time::milliseconds> (m_arrivalTime - m_transmissionTimes.back());
+}
+
 void
 DataFetcher::expressInterest(const Interest& interest, const shared_ptr<DataFetcher>& self)
 {
@@ -98,6 +114,8 @@ DataFetcher::expressInterest(const Interest& interest, const shared_ptr<DataFetc
                                         bind(&DataFetcher::handleNack, this, _1, _2, self),
                                         bind(&DataFetcher::handleTimeout, this, _1, self));
 
+  m_transmissionTimes.push_back(time::steady_clock::now());
+
   if (interest.getName()[-1].isSegment())
     tracepoint(chunksLog, interest_sent, interest.getName()[-1].toSegment());
 }
@@ -109,11 +127,15 @@ DataFetcher::handleData(const Interest& interest, const Data& data,
   if (!isRunning())
     return;
 
-  if (data.getName()[-1].isSegment())
-    tracepoint(chunksLog, data_received, data.getName()[-1].toSegment(), data.getContent().size());
-
+  m_arrivalTime = time::steady_clock::now();
   m_isStopped = true;
-  m_onData(interest, data);
+
+  if (data.getName()[-1].isSegment())
+    tracepoint(chunksLog, data_received, data.getName()[-1].toSegment(), data.getContent().size(),
+               getRetrieveTime().count());
+
+
+  m_onData(interest, data, self);
 }
 
 void
@@ -135,6 +157,8 @@ DataFetcher::handleNack(const Interest& interest, const lp::Nack& nack,
 
   if (m_nNacks <= m_maxNackRetries || m_maxNackRetries == MAX_RETRIES_INFINITE) {
     Interest newInterest(interest);
+    if (m_getInterstLifetime != nullptr)
+      newInterest.setInterestLifetime(m_getInterstLifetime());
     newInterest.refreshNonce();
 
     switch (nack.getReason()) {
@@ -186,7 +210,12 @@ DataFetcher::handleTimeout(const Interest& interest, const shared_ptr<DataFetche
     std::cerr << "Timeout for Interest " << interest << std::endl;
 
   if (m_nTimeouts <= m_maxTimeoutRetries || m_maxTimeoutRetries == MAX_RETRIES_INFINITE) {
+    if (m_onError != nullptr)
+      m_onError(interest, "Timeout");
+
     Interest newInterest(interest);
+    if (m_getInterstLifetime != nullptr)
+      newInterest.setInterestLifetime(m_getInterstLifetime());
     newInterest.refreshNonce();
     expressInterest(newInterest, self);
   }

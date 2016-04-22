@@ -48,6 +48,8 @@ DiscoverVersion::expressInterest(const Interest& interest, int maxRetriesNack,
                                bind(&DiscoverVersion::handleData, this, _1, _2),
                                bind(&DiscoverVersion::handleNack, this, _1, _2),
                                bind(&DiscoverVersion::handleTimeout, this, _1, _2),
+                               nullptr,
+                               nullptr,
                                isVerbose,
                                nullptr);
 }

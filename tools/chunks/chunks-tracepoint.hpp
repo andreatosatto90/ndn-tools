@@ -13,6 +13,7 @@ TRACEPOINT_EVENT(
   chunksLog,
   cat_started,
   TP_ARGS(
+    int, startPipelineSize,
     int, maxPipelineSize,
     int, interestLifetime,
     int, maxRetries,
@@ -21,6 +22,7 @@ TRACEPOINT_EVENT(
     int, startWait
   ),
   TP_FIELDS(
+    ctf_integer(int, start_pipeline_size, startPipelineSize)
     ctf_integer(int, max_pipeline_size, maxPipelineSize)
     ctf_integer(int, interest_lifetime, interestLifetime)
     ctf_integer(int, max_retries, maxRetries)
@@ -78,11 +80,13 @@ TRACEPOINT_EVENT(
   data_received,
   TP_ARGS(
     int, segmentNo,
-    int, bytes
+    int, bytes,
+    int, rtt
   ),
   TP_FIELDS(
     ctf_integer(int, bytes, bytes)
     ctf_integer(int, segment_number, segmentNo)
+    ctf_integer(int, rtt, rtt)
   )
 )
 
@@ -140,6 +144,28 @@ TRACEPOINT_EVENT(
   ),
   TP_FIELDS(
     ctf_integer(int, segment_number, segmentNo)
+  )
+)
+
+TRACEPOINT_EVENT(
+  chunksLog,
+  window,
+  TP_ARGS(
+    int, size
+  ),
+  TP_FIELDS(
+    ctf_integer(int, size, size)
+  )
+)
+
+TRACEPOINT_EVENT(
+  chunksLog,
+  window_decrease,
+  TP_ARGS(
+    int, sizeBeforeTimeout
+  ),
+  TP_FIELDS(
+    ctf_integer(int, size, sizeBeforeTimeout)
   )
 )
 

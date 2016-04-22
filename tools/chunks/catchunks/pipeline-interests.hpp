@@ -31,6 +31,7 @@
 #include "core/common.hpp"
 #include "options.hpp"
 #include <queue>
+#include "rtt-estimator.hpp"
 
 namespace ndn {
 namespace chunks {
@@ -66,7 +67,10 @@ class PipelineInterests
 {
 public:
   typedef PipelineInterestsOptions Options;
+
   typedef function<void(const std::string& reason)> FailureCallback;
+
+  typedef function<void(const Interest&, const Data&, const shared_ptr<DataFetcher>&)> DataFetcherDoneCallback;
 
 public:
   /**
@@ -104,10 +108,13 @@ public:
   cancel();
 
   bool
-  setWindowSize(uint64_t size);
+  setWindowSize(float size);
 
-  uint64_t
+  float
   getWindowSize() const;
+
+  time::milliseconds
+  getInterestLifetime();
 
 private:
   /**
@@ -125,13 +132,19 @@ private:
   fail(const std::string& reason);
 
   void
-  handleData(const Interest& interest, const Data& data, size_t pipeNo);
+  handleData(const Interest& interest, const Data& data, const shared_ptr<DataFetcher>& dataFetcher, size_t pipeNo);
+
+  void
+  handleError(const std::string& reason, size_t pipeNo);
 
   void
   handleFail(const std::string& reason, size_t pipeNo);
 
   bool
   canSend(uint64_t segmentNo, uint64_t pipeNo);
+
+  void
+  handleWindowEvent();
 
 private:
   Name m_prefix;
@@ -160,10 +173,19 @@ private:
   bool m_startWait;
 
   // Congestion control
-  uint64_t m_currentWindowSize;
-  uint64_t m_calculatedWindowSize;
+  float m_currentWindowSize;
+  float m_calculatedWindowSize;
+  float m_lastWindowSize;
   std::queue<uint64_t/*Pipe number*/>  m_waitingPipes;
   std::queue<uint64_t/*Segment number*/>  m_waitingSegments;
+
+  uint64_t m_nMissingWindowEvents; // TODO better name
+  bool m_isWindowCut; // TODO better name
+  float m_windowCutMultiplier;
+  int SSTHRESH_INIT; //TODO const
+
+public:
+  RttEstimator rttEstimator;
 };
 
 } // namespace chunks

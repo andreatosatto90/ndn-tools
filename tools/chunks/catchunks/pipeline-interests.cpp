@@ -28,6 +28,8 @@
 #include "pipeline-interests.hpp"
 #include "data-fetcher.hpp"
 
+#include "../chunks-tracepoint.hpp"
+
 namespace ndn {
 namespace chunks {
 
@@ -51,6 +53,9 @@ PipelineInterests::PipelineInterests(Face& face, const Options& options, uint64_
   m_segmentFetchers.resize(m_options.maxPipelineSize);
   std::random_device rd;
   m_randomGen.seed(rd());
+
+  m_windowCutMultiplier = 0.75;
+  SSTHRESH_INIT = 20;
 }
 
 PipelineInterests::~PipelineInterests()
@@ -88,7 +93,9 @@ PipelineInterests::runWithExcludedSegment(const Data& data, DataCallback onData,
     m_waitingPipes.push(nWaitingSegments);
   }
 
-  m_currentWindowSize = m_options.startPipelineSize;
+  setWindowSize(m_options.startPipelineSize);
+  m_nMissingWindowEvents = m_options.startPipelineSize;
+  m_lastWindowSize = m_options.startPipelineSize;
 }
 
 void
@@ -112,7 +119,10 @@ PipelineInterests::runWithName(Name nameWithVersion, DataCallback onData, Failur
     m_waitingPipes.push(nWaitingSegments);
   }
 
-  m_currentWindowSize = m_options.startPipelineSize;
+
+  setWindowSize(m_options.startPipelineSize);
+  m_nMissingWindowEvents = m_options.startPipelineSize;
+  m_lastWindowSize = m_options.startPipelineSize;
 }
 
 bool
@@ -130,7 +140,8 @@ PipelineInterests::fetchNextSegment(std::size_t pipeNo)
     segmentNo = m_waitingSegments.front();
     m_waitingSegments.pop();
 
-    std::cerr << "Pipe: " << pipeNo << " Requesting segment #" << segmentNo << " next segment no " << m_nextSegmentNo << std::endl;
+    std::cerr << "Pipe: " << pipeNo << " Requesting segment #" << segmentNo << " next segment no "
+              << m_nextSegmentNo << std::endl;
 
   }
   else{
@@ -150,7 +161,7 @@ PipelineInterests::fetchNextSegment(std::size_t pipeNo)
     std::cerr << "Pipe: " << pipeNo << " Requesting segment #" << segmentNo << std::endl;
 
   Interest interest(Name(m_prefix).appendSegment(segmentNo));
-  interest.setInterestLifetime(m_options.interestLifetime);
+  interest.setInterestLifetime(getInterestLifetime());
   interest.setMustBeFresh(m_options.mustBeFresh);
   interest.setMaxSuffixComponents(1);
 
@@ -159,9 +170,11 @@ PipelineInterests::fetchNextSegment(std::size_t pipeNo)
   auto fetcher = DataFetcher::fetch(m_face, interest,
                                     m_options.maxRetriesOnTimeoutOrNack,
                                     m_options.maxRetriesOnTimeoutOrNack,
-                                    bind(&PipelineInterests::handleData, this, _1, _2, pipeNo),
+                                    bind(&PipelineInterests::handleData, this, _1, _2, _3, pipeNo),
                                     bind(&PipelineInterests::handleFail, this, _2, pipeNo),
                                     bind(&PipelineInterests::handleFail, this, _2, pipeNo),
+                                    bind(&PipelineInterests::handleError, this, _2, pipeNo),
+                                    bind(&PipelineInterests::getInterestLifetime, this),
                                     m_options.isVerbose,
                                     bind(&PipelineInterests::canSend, this, segmentNo, pipeNo));
 
@@ -197,21 +210,42 @@ PipelineInterests::cancel()
 }
 
 bool
-PipelineInterests::setWindowSize(uint64_t size)
+PipelineInterests::setWindowSize(float size)
 {
-  if (size >= m_options.startPipelineSize && size <= m_options.maxPipelineSize) {
+  if (size >= m_options.maxPipelineSize)
+    m_calculatedWindowSize = m_options.maxPipelineSize;
+  else if (size <= m_options.startPipelineSize)
+    m_calculatedWindowSize = m_options.startPipelineSize;
+  else
     m_calculatedWindowSize = size;
-    std::cerr << "Window size: " << m_calculatedWindowSize << std::endl;
-    return true;
-  }
 
-  return false;
+  tracepoint(chunksLog, window, m_calculatedWindowSize);
+
+  //std::cerr << "Window size: " << m_calculatedWindowSize << std::endl;
+
+  return true;
 }
 
-uint64_t
+float
 PipelineInterests::getWindowSize() const
 {
   return m_calculatedWindowSize;
+}
+
+time::milliseconds
+PipelineInterests::getInterestLifetime()
+{
+  time::milliseconds lifetime = time::seconds(4);
+  if (m_options.interestLifetime.count() == 0) {
+    if (rttEstimator.getRTO() != -1)
+      lifetime = time::milliseconds(static_cast<int>(rttEstimator.getRTO()));
+  }
+  else {
+    lifetime = m_options.interestLifetime;
+  }
+
+  //std::cerr << lifetime <<std::endl;
+  return lifetime;
 }
 
 void
@@ -227,12 +261,18 @@ PipelineInterests::fail(const std::string& reason)
 }
 
 void
-PipelineInterests::handleData(const Interest& interest, const Data& data, size_t pipeNo)
+PipelineInterests::handleData(const Interest& interest, const Data& data,
+                              const shared_ptr<DataFetcher>& dataFetcher, size_t pipeNo)
 {
   if (m_hasError)
     return;
 
   BOOST_ASSERT(data.getName().equals(interest.getName()));
+
+  //TODO Delete
+  /*if (dataFetcher->m_transmissionTimes.size() > 1) // At least one retransmision
+    std::cerr << "Pipe:\t" << pipeNo << "\tsegment #:\t" << data.getName()[-1].toSegment()
+              << "\tRtt:\t" << dataFetcher->getRetrieveTime() << std::endl;*/
 
   //std::cerr << data.getTag<lp::StrategyNotify>() << std::endl;
 
@@ -240,6 +280,8 @@ PipelineInterests::handleData(const Interest& interest, const Data& data, size_t
     std::cerr << "Pipe: " << pipeNo << " Received segment #" << data.getName()[-1].toSegment() << std::endl;
 
   m_onData(interest, data);
+
+  rttEstimator.addRttMeasurement(dataFetcher);
 
   if (!m_hasFinalBlockId && !data.getFinalBlockId().empty()) {
     m_lastSegmentNo = data.getFinalBlockId().toSegment();
@@ -261,6 +303,11 @@ PipelineInterests::handleData(const Interest& interest, const Data& data, size_t
   m_currentWindowSize--;
   m_waitingPipes.push(pipeNo);
 
+  if (m_calculatedWindowSize <= SSTHRESH_INIT)
+    setWindowSize(m_calculatedWindowSize + 1);
+  else
+    setWindowSize(m_calculatedWindowSize + (1 / m_lastWindowSize));
+
   while (m_currentWindowSize < m_calculatedWindowSize) {
     if (m_startWait)
       fetchNextSegment(m_waitingPipes.front());
@@ -272,7 +319,22 @@ PipelineInterests::handleData(const Interest& interest, const Data& data, size_t
     ++m_currentWindowSize;
   }
 
-  // TODO handle window decrease
+  handleWindowEvent();
+}
+
+void
+PipelineInterests::handleError(const std::string& reason, std::size_t pipeNo)
+{
+
+  if (!m_isWindowCut) {
+    tracepoint(chunksLog, window_decrease, m_lastWindowSize);
+
+    setWindowSize(m_lastWindowSize * m_windowCutMultiplier);
+    m_isWindowCut = true;
+  }
+
+  handleWindowEvent();
+  //std::cerr << "Window size/2 : " << m_calculatedWindowSize << std::endl;
 }
 
 void
@@ -315,6 +377,18 @@ PipelineInterests::canSend(uint64_t segmentNo, uint64_t pipeNo)
   m_waitingPipes.push(pipeNo);
   m_waitingSegments.push(segmentNo);
   return false;
+}
+
+void
+PipelineInterests::handleWindowEvent()
+{
+  m_nMissingWindowEvents--;
+
+  if (m_nMissingWindowEvents == 0) {
+    m_isWindowCut = false;
+    m_nMissingWindowEvents = m_calculatedWindowSize;
+    m_lastWindowSize = m_calculatedWindowSize;
+  }
 }
 
 } // namespace chunks

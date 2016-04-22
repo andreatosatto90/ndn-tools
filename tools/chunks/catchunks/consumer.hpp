@@ -105,6 +105,7 @@ private:
 
   // Statistics
   bool m_printStat;
+  uint32_t m_statIntervalMs;
   Scheduler m_scheduler;
   uint64_t m_nReceivedSegments;
   uint64_t m_lastSegmentNo;
