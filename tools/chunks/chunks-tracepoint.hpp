@@ -107,10 +107,12 @@ TRACEPOINT_EVENT(
   chunksLog,
   interest_discovery,
   TP_ARGS(              // TODO no ARGS
-    int, segmentNo
+    int, segmentNo,
+    int, lifetime
   ),
   TP_FIELDS(
     ctf_integer(int, segment_number, segmentNo)
+    ctf_integer(int, lifetime, lifetime)
   )
 )
 
@@ -118,10 +120,12 @@ TRACEPOINT_EVENT(
   chunksLog,
   interest_sent,
   TP_ARGS(
-    int, segmentNo
+    int, segmentNo,
+    int, lifetime
   ),
   TP_FIELDS(
     ctf_integer(int, segment_number, segmentNo)
+    ctf_integer(int, lifetime, lifetime)
   )
 )
 

@@ -62,7 +62,7 @@ public:
 
   typedef function<void(const Interest& interest, const std::string& reason)> FailureCallback;
 
-  typedef function<bool(uint64_t, uint64_t)> CanSendCallback;
+  typedef function<bool()> CanSendCallback;
 
   typedef function<void(const Interest&, const Data&, const shared_ptr<DataFetcher>&)> DataFetcherDoneCallback;
 

@@ -51,7 +51,7 @@ DiscoverVersionFixed::run()
 
   expressInterest(interest, maxRetriesOnTimeoutOrNack, maxRetriesOnTimeoutOrNack);
 
-  tracepoint(chunksLog, interest_discovery, 0);
+  tracepoint(chunksLog, interest_discovery, 0, interest.getInterestLifetime().count());
 }
 
 void

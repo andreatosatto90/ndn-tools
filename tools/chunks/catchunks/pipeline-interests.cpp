@@ -140,9 +140,7 @@ PipelineInterests::fetchNextSegment(std::size_t pipeNo)
     segmentNo = m_waitingSegments.front();
     m_waitingSegments.pop();
 
-    std::cerr << "Pipe: " << pipeNo << " Requesting segment #" << segmentNo << " next segment no "
-              << m_nextSegmentNo << std::endl;
-
+    //std::cerr << "Pipe: " << pipeNo << " Requesting segment #" << segmentNo << " next segment no " << m_nextSegmentNo << std::endl;
   }
   else{
     ++m_nextSegmentNo;
@@ -243,6 +241,12 @@ PipelineInterests::getInterestLifetime()
   else {
     lifetime = m_options.interestLifetime;
   }
+
+  if (lifetime > time::seconds(4)) //TODO
+    return time::seconds(4);
+
+  if (lifetime < time::seconds(1)) //TODO
+    return time::seconds(1);
 
   //std::cerr << lifetime <<std::endl;
   return lifetime;
@@ -371,8 +375,13 @@ PipelineInterests::handleFail(const std::string& reason, std::size_t pipeNo)
 bool
 PipelineInterests::canSend(uint64_t segmentNo, uint64_t pipeNo)
 {
+  //std::cerr << "Can send " << segmentNo << std::endl;
   if (m_currentWindowSize <= m_calculatedWindowSize)
     return true;
+
+  m_currentWindowSize--;
+
+  //std::cerr << "Current window size " << m_currentWindowSize << std::endl;
 
   m_waitingPipes.push(pipeNo);
   m_waitingSegments.push(segmentNo);

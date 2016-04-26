@@ -167,8 +167,8 @@ Consumer::printStatistics()
               << " T " << static_cast<double>(m_receivedBytes/1000) << " KB \t"
               << static_cast<double>(m_receivedBytes) / (runningTime.count()) << " KB/s \t"
               << " C " << static_cast<double>(m_lastReceivedBytes/1000) << " KB  \t"
-              << static_cast<double>(m_lastReceivedBytes) / (lastRunningTime.count()) << " KB/s \t"
-              << "Window " << m_pipeline->getWindowSize() << "\t"
+              << static_cast<double>(m_lastReceivedBytes) / (lastRunningTime.count()) << " KB/s   \t"
+              << "Wnd " << m_pipeline->getWindowSize() << "   \t"
               << "Rtt " << int(m_pipeline->rttEstimator.getRttMean()) << "\t"
               << std::endl;
   }

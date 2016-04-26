@@ -103,7 +103,8 @@ DataFetcher::getRetrieveTime() const
 void
 DataFetcher::expressInterest(const Interest& interest, const shared_ptr<DataFetcher>& self)
 {
-  if (m_canSend != nullptr && !m_canSend) {
+  if (m_canSend != nullptr && !m_canSend()) {
+    //std::cerr << "Stopped " << interest << std::endl;
     cancel();
     return;
   }
@@ -117,7 +118,7 @@ DataFetcher::expressInterest(const Interest& interest, const shared_ptr<DataFetc
   m_transmissionTimes.push_back(time::steady_clock::now());
 
   if (interest.getName()[-1].isSegment())
-    tracepoint(chunksLog, interest_sent, interest.getName()[-1].toSegment());
+    tracepoint(chunksLog, interest_sent, interest.getName()[-1].toSegment(), interest.getInterestLifetime().count());
 }
 
 void
