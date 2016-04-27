@@ -46,12 +46,14 @@ public:
     : Options(options)
     , maxPipelineSize(1)
     , startPipelineSize(1)
+    , slowStartThreshold(20)
   {
   }
 
 public:
   size_t maxPipelineSize;
   size_t startPipelineSize;
+  size_t slowStartThreshold;
 };
 
 /**

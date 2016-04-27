@@ -55,6 +55,7 @@ main(int argc, char** argv)
   std::string discoverType("fixed");
   size_t maxPipelineSize(0);
   size_t startPipelineSize(1);
+  size_t slowStartThreshold(20);
   int maxRetriesAfterVersionFound(1);
   std::string uri;
 
@@ -93,6 +94,8 @@ main(int argc, char** argv)
                     "maximum wait time before sending an interest")
     ("startWait,W",  po::bool_switch(&startWait), "add delay only to the first interest of each pipe")
     ("noDiscovery,k",  po::bool_switch(&noDiscovery), "disable discovery, the name should have a version number")
+    ("slowStartThreshold,t",  po::value<size_t>(&slowStartThreshold)->default_value(slowStartThreshold),
+                              "slow start threshold (0 = no threshold)")
     ;
 
   po::options_description hiddenDesc("Hidden options");
@@ -194,6 +197,7 @@ main(int argc, char** argv)
     PipelineInterests::Options optionsPipeline(options);
     optionsPipeline.maxPipelineSize = maxPipelineSize;
     optionsPipeline.startPipelineSize = startPipelineSize;
+    optionsPipeline.slowStartThreshold = slowStartThreshold;
     PipelineInterests pipeline(face, optionsPipeline, randomWaitMax, startWait);
 
     BOOST_ASSERT(discover != nullptr);
