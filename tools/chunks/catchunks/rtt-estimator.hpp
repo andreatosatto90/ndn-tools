@@ -47,8 +47,11 @@ public:
 
   float getRttMean() const;
 
+  float getRttVar() const;
+
 private :
   float m_rttMean;
+  float m_rttVar;
   float m_rtt0;
   float m_rttMulti;
   float m_rttMax;
@@ -59,6 +62,7 @@ private :
   std::vector<float> m_oldRtt;
   uint32_t m_nSamples;
   std::pair<float /*old*/, float /*new*/> rttMeanWeight;
+  std::pair<float /*old*/, float /*new*/> rttVarWeight;
 };
 
 

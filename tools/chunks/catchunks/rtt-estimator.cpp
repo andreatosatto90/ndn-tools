@@ -35,7 +35,12 @@ RttEstimator::RttEstimator()
 {
   rttMeanWeight.first = 0.3;  // Old value
   rttMeanWeight.second = 0.7; // New value
+
+  rttVarWeight.first = 0.125;  // Old value
+  rttVarWeight.second = 0.875; // New value
+
   m_rttMean = -1;
+  m_rttVar = -1;
   m_lastRtt = -1;
   m_rttMulti = 2;
   m_rttMin = 10;
@@ -97,13 +102,15 @@ RttEstimator::addRttMeasurement(const shared_ptr<DataFetcher>& df)
   m_oldRtt.push_back(rtt);
 
   float newMean = m_oldRtt[0];
+  float newVar = m_oldRtt[0] / 2;
   for(uint32_t i = 1; i < m_oldRtt.size(); i++) {
+    newVar = (newVar * rttVarWeight.first) + (std::abs(m_oldRtt[i] - newMean) * rttVarWeight.second);
     newMean = (newMean * rttMeanWeight.first) + (m_oldRtt[i] * rttMeanWeight.second);
   }
 
   m_lastRtt = rtt;
   m_rttMean = newMean;
-
+  m_rttVar = newVar;
 
   return rttOriginal;
 }
@@ -114,13 +121,19 @@ RttEstimator::getRTO() const
   if (m_rttMean == -1)
     return -1;
 
-  return m_rttMean * 4;
+  return m_rttMean + (m_rttVar * 4);
 }
 
 float
 RttEstimator::getRttMean() const
 {
   return m_rttMean;
+}
+
+float
+RttEstimator::getRttVar() const
+{
+  return m_rttVar;
 }
 
 

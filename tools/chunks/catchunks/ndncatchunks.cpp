@@ -203,7 +203,7 @@ main(int argc, char** argv)
     BOOST_ASSERT(discover != nullptr);
 
     tracepoint(chunksLog, cat_started, startPipelineSize, maxPipelineSize, options.interestLifetime.count(),
-               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, randomWaitMax, startWait);
+               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, randomWaitMax, startWait, slowStartThreshold);
 
     consumer.run(*discover, pipeline, noDiscovery);
     m_signalSetInt.cancel();
