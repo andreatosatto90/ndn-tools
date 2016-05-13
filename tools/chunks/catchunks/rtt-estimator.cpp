@@ -39,14 +39,7 @@ RttEstimator::RttEstimator()
   rttVarWeight.first = 0.125;  // Old value
   rttVarWeight.second = 0.875; // New value
 
-  m_rttMean = -1;
-  m_rttVar = -1;
-  m_lastRtt = -1;
-  m_rttMulti = 2;
-  m_rttMin = 10;
-  m_rttMax = 1000;
-  m_rtt0 = 250;
-  m_rttMinCalc = -1;
+  reset();
 
   m_nSamples = 5;
 }
@@ -111,6 +104,7 @@ RttEstimator::addRttMeasurement(const shared_ptr<DataFetcher>& df)
   m_lastRtt = rtt;
   m_rttMean = newMean;
   m_rttVar = newVar;
+  //m_rtoMulti = 1;
 
   return rttOriginal;
 }
@@ -121,7 +115,7 @@ RttEstimator::getRTO() const
   if (m_rttMean == -1)
     return -1;
 
-  return m_rttMean + (m_rttVar * 4);
+  return m_rtoMulti * (m_rttMean + (m_rttVar * 4));
 }
 
 float
@@ -134,6 +128,37 @@ float
 RttEstimator::getRttVar() const
 {
   return m_rttVar;
+}
+
+float
+RttEstimator::incrementRtoMultiplier()
+{
+  if (m_rtoMulti > 20)
+    return m_rtoMulti;
+
+  m_rtoMulti *= 2;
+
+  return m_rtoMulti;
+}
+
+float
+RttEstimator::getRttMultiplier()
+{
+  return m_rtoMulti;
+}
+
+void
+RttEstimator::reset()
+{
+  m_rttMean = -1;
+  m_rttVar = -1;
+  m_lastRtt = -1;
+  m_rttMulti = 2;
+  m_rttMin = 10;
+  m_rttMax = 2000;
+  m_rtt0 = 250;
+  m_rttMinCalc = -1;
+  m_rtoMulti = 1;
 }
 
 

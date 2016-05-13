@@ -108,7 +108,7 @@ TRACEPOINT_EVENT(
 TRACEPOINT_EVENT(
   chunksLog,
   interest_discovery,
-  TP_ARGS(              // TODO no ARGS
+  TP_ARGS(
     int, segmentNo,
     int, lifetime
   ),
@@ -168,10 +168,12 @@ TRACEPOINT_EVENT(
   chunksLog,
   window_decrease,
   TP_ARGS(
-    int, sizeBeforeTimeout
+    int, sizeBeforeTimeout,
+    int, rttMultiplier
   ),
   TP_FIELDS(
     ctf_integer(int, size, sizeBeforeTimeout)
+    ctf_integer(int, rtt_multiplier, rttMultiplier)
   )
 )
 

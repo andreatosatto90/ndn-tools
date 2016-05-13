@@ -49,6 +49,12 @@ public:
 
   float getRttVar() const;
 
+  float incrementRtoMultiplier();
+
+  float getRttMultiplier();
+
+  void reset();
+
 private :
   float m_rttMean;
   float m_rttVar;
@@ -58,6 +64,7 @@ private :
   float m_rttMin;
   float m_lastRtt;
   float m_rttMinCalc;
+  float m_rtoMulti;
 
   std::vector<float> m_oldRtt;
   uint32_t m_nSamples;

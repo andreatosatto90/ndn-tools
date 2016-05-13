@@ -47,6 +47,7 @@ public:
     , maxPipelineSize(1)
     , startPipelineSize(1)
     , slowStartThreshold(20)
+    , nTimeoutBeforeReset(3)
   {
   }
 
@@ -54,6 +55,7 @@ public:
   size_t maxPipelineSize;
   size_t startPipelineSize;
   size_t slowStartThreshold;
+  size_t nTimeoutBeforeReset;
 };
 
 /**
@@ -184,7 +186,11 @@ private:
   uint64_t m_nMissingWindowEvents; // TODO better name
   bool m_isWindowCut; // TODO better name
   float m_windowCutMultiplier;
-  int SSTHRESH_INIT; //TODO const
+  int SSTHRESH_INIT; //TODO const (maybe)
+
+  int m_nConsecutiveTimeouts;
+
+
 
 public:
   RttEstimator rttEstimator;

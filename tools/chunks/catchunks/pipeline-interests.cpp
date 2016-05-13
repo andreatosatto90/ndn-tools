@@ -47,6 +47,7 @@ PipelineInterests::PipelineInterests(Face& face, const Options& options, uint64_
   , m_startWait(startWait)
   , m_currentWindowSize(m_options.startPipelineSize)
   , m_calculatedWindowSize(m_options.startPipelineSize)
+  , m_nConsecutiveTimeouts(0)
 {
   BOOST_ASSERT(m_options.maxPipelineSize >= m_options.startPipelineSize);
 
@@ -242,8 +243,8 @@ PipelineInterests::getInterestLifetime()
     lifetime = m_options.interestLifetime;
   }
 
-  if (lifetime > time::seconds(4)) //TODO
-    return time::seconds(4);
+  if (lifetime > time::seconds(20)) //TODO
+    return time::seconds(20);
 
   if (lifetime < time::seconds(1)) //TODO
     return time::seconds(1);
@@ -272,6 +273,8 @@ PipelineInterests::handleData(const Interest& interest, const Data& data,
     return;
 
   BOOST_ASSERT(data.getName().equals(interest.getName()));
+
+  m_nConsecutiveTimeouts = 0;
 
   //TODO Delete
   /*if (dataFetcher->m_transmissionTimes.size() > 1) // At least one retransmision
@@ -329,12 +332,21 @@ PipelineInterests::handleData(const Interest& interest, const Data& data,
 void
 PipelineInterests::handleError(const std::string& reason, std::size_t pipeNo)
 {
+  ++m_nConsecutiveTimeouts;
 
   if (!m_isWindowCut) {
-    tracepoint(chunksLog, window_decrease, m_lastWindowSize);
+    float lastWindowSize = m_lastWindowSize;
 
     setWindowSize(m_lastWindowSize * m_windowCutMultiplier);
     m_isWindowCut = true;
+    rttEstimator.incrementRtoMultiplier();
+
+    tracepoint(chunksLog, window_decrease, lastWindowSize, rttEstimator.getRttMultiplier());
+  }
+
+  if (m_options.nTimeoutBeforeReset !=0 && m_nConsecutiveTimeouts >= m_options.nTimeoutBeforeReset) {
+    rttEstimator.reset();
+    // TODO don't cut window?
   }
 
   handleWindowEvent();

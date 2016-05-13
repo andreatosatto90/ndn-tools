@@ -169,8 +169,9 @@ Consumer::printStatistics()
               << " C " << static_cast<double>(m_lastReceivedBytes/1000) << " KB  \t"
               << static_cast<double>(m_lastReceivedBytes) / (lastRunningTime.count()) << " KB/s   \t"
               << "Wnd " << m_pipeline->getWindowSize() << "   \t"
-              << "Rtt " << int(m_pipeline->rttEstimator.getRttMean()) << "("
-              << int(m_pipeline->rttEstimator.getRttVar()) << ")\t"
+              << "Rtt " << int(m_pipeline->rttEstimator.getRttMean())
+              << "(" << int(m_pipeline->rttEstimator.getRttVar()) << ") "
+              << "(" << int(m_pipeline->rttEstimator.getRttMultiplier()) << ")\t"
               << std::endl;
   }
   else {
