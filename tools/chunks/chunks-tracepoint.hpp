@@ -20,7 +20,8 @@ TRACEPOINT_EVENT(
     int, mustBeFresh,
     int, randomWaitMax,
     int, startWait,
-    int, ssthresh
+    int, ssthresh,
+    int, nTimeoutBeforeReset
   ),
   TP_FIELDS(
     ctf_integer(int, start_pipeline_size, startPipelineSize)
@@ -31,6 +32,7 @@ TRACEPOINT_EVENT(
     ctf_integer(int, random_wait_max, randomWaitMax)
     ctf_integer(int, start_wait, startWait)
     ctf_integer(int, ssthresh, ssthresh)
+    ctf_integer(int, timeout_reset, nTimeoutBeforeReset)
   )
 )
 

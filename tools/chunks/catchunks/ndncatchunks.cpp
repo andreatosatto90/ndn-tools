@@ -51,16 +51,11 @@ static int
 main(int argc, char** argv)
 {
   std::string programName(argv[0]);
-  Options options;
+  PipelineInterests::Options options;
   std::string discoverType("fixed");
-  size_t maxPipelineSize(0);
-  size_t startPipelineSize(1);
-  size_t slowStartThreshold(20);
   int maxRetriesAfterVersionFound(1);
   std::string uri;
 
-
-  int pipelineIncrease(0);
 
   bool printStat = false;
   uint64_t randomWaitMax = 0;
@@ -76,12 +71,12 @@ main(int argc, char** argv)
     ("fresh,f",     po::bool_switch(&options.mustBeFresh), "only return fresh content")
     ("lifetime,l",  po::value<uint64_t>()->default_value(options.interestLifetime.count()),
                     "lifetime of expressed Interests, in milliseconds")
-    ("pipelineStart,p",  po::value<size_t>(&startPipelineSize)->default_value(startPipelineSize),
+    ("pipelineStart,p",  po::value<size_t>(&options.startPipelineSize)->default_value(options.startPipelineSize),
                     "initial max size of the Interest pipeline")
-    ("pipelineMax,m",  po::value<size_t>(&maxPipelineSize)->default_value(maxPipelineSize),
+    ("pipelineMax,m",  po::value<size_t>(&options.maxPipelineSize)->default_value(options.maxPipelineSize),
                     "maximum size of the Interest pipeline (0 = same as start pipeline size)")
-    ("pipelineIncrease,c",  po::value<int>(&pipelineIncrease)->default_value(pipelineIncrease),
-                    "add/substract value to pipeline size each second")
+    ("timeoutBeforeReset,R",  po::value<size_t>(&options.nTimeoutBeforeReset)->default_value(options.nTimeoutBeforeReset),
+                    "number of consecutive timeouts to reset the rtt estimator")
     ("retries,r",   po::value<int>(&options.maxRetriesOnTimeoutOrNack)->default_value(options.maxRetriesOnTimeoutOrNack),
                     "maximum number of retries in case of Nack or timeout (-1 = no limit)")
     ("retries-iterative,i", po::value<int>(&maxRetriesAfterVersionFound)->default_value(maxRetriesAfterVersionFound),
@@ -94,7 +89,7 @@ main(int argc, char** argv)
                     "maximum wait time before sending an interest")
     ("startWait,W",  po::bool_switch(&startWait), "add delay only to the first interest of each pipe")
     ("noDiscovery,k",  po::bool_switch(&noDiscovery), "disable discovery, the name should have a version number")
-    ("slowStartThreshold,t",  po::value<size_t>(&slowStartThreshold)->default_value(slowStartThreshold),
+    ("slowStartThreshold,t",  po::value<size_t>(&options.slowStartThreshold)->default_value(options.slowStartThreshold),
                               "slow start threshold (0 = no threshold)")
     ;
 
@@ -146,15 +141,15 @@ main(int argc, char** argv)
     return 2;
   }
 
-  if (startPipelineSize < 1 || startPipelineSize > 65536) {
+  if (options.startPipelineSize < 1 || options.startPipelineSize > 65536) {
     std::cerr << "ERROR: start pipeline size must be between 1 and 65536" << std::endl;
     return 2;
   }
 
-  if (maxPipelineSize == 0)
-    maxPipelineSize = startPipelineSize;
+  if (options.maxPipelineSize == 0)
+    options.maxPipelineSize = options.startPipelineSize;
 
-  if (maxPipelineSize < startPipelineSize || maxPipelineSize > 65536) {
+  if (options.maxPipelineSize < options.startPipelineSize || options.maxPipelineSize > 65536) {
     std::cerr << "ERROR: max pipeline size must be between pipelineStart and 65536" << std::endl;
     return 2;
   }
@@ -191,19 +186,16 @@ main(int argc, char** argv)
     }
 
     ValidatorNull validator;
-    Consumer consumer(face, validator, options.isVerbose, std::cout, printStat, pipelineIncrease);
+    Consumer consumer(face, validator, options.isVerbose, std::cout, printStat);
     m_signalSetInt.async_wait(bind(ndn::chunks::handleSIGINT, _1, std::ref(consumer)));
 
-    PipelineInterests::Options optionsPipeline(options);
-    optionsPipeline.maxPipelineSize = maxPipelineSize;
-    optionsPipeline.startPipelineSize = startPipelineSize;
-    optionsPipeline.slowStartThreshold = slowStartThreshold;
-    PipelineInterests pipeline(face, optionsPipeline, randomWaitMax, startWait);
+
+    PipelineInterests pipeline(face, options, randomWaitMax, startWait);
 
     BOOST_ASSERT(discover != nullptr);
 
-    tracepoint(chunksLog, cat_started, startPipelineSize, maxPipelineSize, options.interestLifetime.count(),
-               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, randomWaitMax, startWait, slowStartThreshold);
+    tracepoint(chunksLog, cat_started, options.startPipelineSize, options.maxPipelineSize, options.interestLifetime.count(),
+               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, randomWaitMax, startWait, options.slowStartThreshold, options.nTimeoutBeforeReset);
 
     consumer.run(*discover, pipeline, noDiscovery);
     m_signalSetInt.cancel();

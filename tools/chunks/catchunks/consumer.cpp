@@ -32,7 +32,7 @@ namespace ndn {
 namespace chunks {
 
 Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostream& os,
-                   bool printStat, int pipelineIncrease)
+                   bool printStat)
   : m_face(face)
   , m_validator(validator)
   , m_pipeline(nullptr)
@@ -41,7 +41,6 @@ Consumer::Consumer(Face& face, Validator& validator, bool isVerbose, std::ostrea
   , m_isVerbose(isVerbose)
   , m_printStat(printStat)
   , m_scheduler(face.getIoService())
-  , m_windowMultiplier(pipelineIncrease)
 {
   m_statIntervalMs = 500;
 }
@@ -139,8 +138,8 @@ Consumer::onDataValidated(shared_ptr<const Data> data)
 
   m_bufferedData[data->getName()[-1].toSegment()] = data;
 
-  m_receivedBytes += data->getContent().value_size();
-  m_lastReceivedBytes += data->getContent().value_size();
+  m_receivedBytes += 1407; // data->getContent().value_size(); // TODO
+  m_lastReceivedBytes += 1407; // data->getContent().value_size();
 
   m_nReceivedSegments++;
 

@@ -61,7 +61,7 @@ public:
    * @brief Create the consumer
    */
   Consumer(Face& face, Validator& validator, bool isVerbose,
-           std::ostream& os = std::cout, bool printStat = false, int pipelineIncrease = 0);
+           std::ostream& os = std::cout, bool printStat = false);
 
   /**
    * @brief Run the consumer

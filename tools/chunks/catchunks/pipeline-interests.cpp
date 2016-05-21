@@ -56,7 +56,6 @@ PipelineInterests::PipelineInterests(Face& face, const Options& options, uint64_
   m_randomGen.seed(rd());
 
   m_windowCutMultiplier = 0.75;
-  SSTHRESH_INIT = m_options.slowStartThreshold;
 }
 
 PipelineInterests::~PipelineInterests()
@@ -310,7 +309,7 @@ PipelineInterests::handleData(const Interest& interest, const Data& data,
   m_currentWindowSize--;
   m_waitingPipes.push(pipeNo);
 
-  if (SSTHRESH_INIT == 0 || m_calculatedWindowSize <= SSTHRESH_INIT)
+  if (m_options.slowStartThreshold == 0 || m_calculatedWindowSize <= m_options.slowStartThreshold)
     setWindowSize(m_calculatedWindowSize + 1);
   else
     setWindowSize(m_calculatedWindowSize + (1 / m_lastWindowSize));

@@ -44,7 +44,7 @@ public:
   explicit
   PipelineInterestsOptions(const Options& options = Options())
     : Options(options)
-    , maxPipelineSize(1)
+    , maxPipelineSize(0)
     , startPipelineSize(1)
     , slowStartThreshold(20)
     , nTimeoutBeforeReset(3)
@@ -186,11 +186,8 @@ private:
   uint64_t m_nMissingWindowEvents; // TODO better name
   bool m_isWindowCut; // TODO better name
   float m_windowCutMultiplier;
-  int SSTHRESH_INIT; //TODO const (maybe)
 
-  int m_nConsecutiveTimeouts;
-
-
+  size_t m_nConsecutiveTimeouts;
 
 public:
   RttEstimator rttEstimator;
