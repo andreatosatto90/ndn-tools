@@ -47,6 +47,7 @@ PipelineInterests::PipelineInterests(Face& face, const Options& options, uint64_
   , m_startWait(startWait)
   , m_currentWindowSize(m_options.startPipelineSize)
   , m_calculatedWindowSize(m_options.startPipelineSize)
+  , m_hasMultiplierChanged(false)
   , m_nConsecutiveTimeouts(0)
 {
   BOOST_ASSERT(m_options.maxPipelineSize >= m_options.startPipelineSize);
@@ -242,11 +243,11 @@ PipelineInterests::getInterestLifetime()
     lifetime = m_options.interestLifetime;
   }
 
-  if (lifetime > time::seconds(20)) //TODO
-    return time::seconds(20);
+  if (lifetime > time::seconds(15)) //TODO
+    return time::seconds(15);
 
-  if (lifetime < time::seconds(1)) //TODO
-    return time::seconds(1);
+  if (lifetime < time::milliseconds(500)) //TODO
+    return time::milliseconds(500);
 
   //std::cerr << lifetime <<std::endl;
   return lifetime;
@@ -288,6 +289,11 @@ PipelineInterests::handleData(const Interest& interest, const Data& data,
   m_onData(interest, data);
 
   rttEstimator.addRttMeasurement(dataFetcher);
+
+  /*if (!m_hasMultiplierChanged) {
+    rttEstimator.decrementRtoMultiplier();
+    m_hasMultiplierChanged = true;
+  }*/
 
   if (!m_hasFinalBlockId && !data.getFinalBlockId().empty()) {
     m_lastSegmentNo = data.getFinalBlockId().toSegment();
@@ -333,18 +339,24 @@ PipelineInterests::handleError(const std::string& reason, std::size_t pipeNo)
 {
   ++m_nConsecutiveTimeouts;
 
+  /*if (!m_hasMultiplierChanged) {
+    rttEstimator.incrementRtoMultiplier();
+    m_hasMultiplierChanged = true;
+  }*/
+
   if (!m_isWindowCut) {
     float lastWindowSize = m_lastWindowSize;
 
     setWindowSize(m_lastWindowSize * m_windowCutMultiplier);
     m_isWindowCut = true;
-    rttEstimator.incrementRtoMultiplier();
 
-    tracepoint(chunksLog, window_decrease, lastWindowSize, rttEstimator.getRttMultiplier());
+    rttEstimator.incrementRtoMultiplier();
+    std::cerr << rttEstimator.getRtoMultiplier() << std::endl;
+    tracepoint(chunksLog, window_decrease, lastWindowSize, rttEstimator.getRtoMultiplier());
   }
 
   if (m_options.nTimeoutBeforeReset !=0 && m_nConsecutiveTimeouts >= m_options.nTimeoutBeforeReset) {
-    rttEstimator.reset();
+    //rttEstimator.reset();
     // TODO don't cut window?
   }
 
@@ -405,6 +417,7 @@ PipelineInterests::handleWindowEvent()
   m_nMissingWindowEvents--;
 
   if (m_nMissingWindowEvents == 0) {
+    m_hasMultiplierChanged = false;
     m_isWindowCut = false;
     m_nMissingWindowEvents = m_calculatedWindowSize;
     m_lastWindowSize = m_calculatedWindowSize;

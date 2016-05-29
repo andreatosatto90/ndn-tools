@@ -133,7 +133,7 @@ RttEstimator::getRttVar() const
 float
 RttEstimator::incrementRtoMultiplier()
 {
-  if (m_rtoMulti > 20)
+  if (m_rtoMulti > 16)  // max 32
     return m_rtoMulti;
 
   m_rtoMulti *= 2;
@@ -142,7 +142,18 @@ RttEstimator::incrementRtoMultiplier()
 }
 
 float
-RttEstimator::getRttMultiplier()
+RttEstimator::decrementRtoMultiplier()
+{
+  if (m_rtoMulti < 2) // min 1
+    return m_rtoMulti;
+
+  m_rtoMulti /= 2;
+
+  return m_rtoMulti;
+}
+
+float
+RttEstimator::getRtoMultiplier()
 {
   return m_rtoMulti;
 }

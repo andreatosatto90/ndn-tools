@@ -51,7 +51,9 @@ public:
 
   float incrementRtoMultiplier();
 
-  float getRttMultiplier();
+  float decrementRtoMultiplier();
+
+  float getRtoMultiplier();
 
   void reset();
 

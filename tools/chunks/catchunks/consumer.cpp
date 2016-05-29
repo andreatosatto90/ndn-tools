@@ -170,7 +170,7 @@ Consumer::printStatistics()
               << "Wnd " << m_pipeline->getWindowSize() << "   \t"
               << "Rtt " << int(m_pipeline->rttEstimator.getRttMean())
               << "(" << int(m_pipeline->rttEstimator.getRttVar()) << ") "
-              << "(" << int(m_pipeline->rttEstimator.getRttMultiplier()) << ")\t"
+              << "(" << int(m_pipeline->rttEstimator.getRtoMultiplier()) << ")\t"
               << std::endl;
   }
   else {

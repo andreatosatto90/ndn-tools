@@ -186,6 +186,7 @@ private:
   uint64_t m_nMissingWindowEvents; // TODO better name
   bool m_isWindowCut; // TODO better name
   float m_windowCutMultiplier;
+  bool m_hasMultiplierChanged; // for this window
 
   size_t m_nConsecutiveTimeouts;
 
