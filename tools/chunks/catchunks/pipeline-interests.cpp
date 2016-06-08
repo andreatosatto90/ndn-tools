@@ -56,7 +56,6 @@ PipelineInterests::PipelineInterests(Face& face, const Options& options, uint64_
   std::random_device rd;
   m_randomGen.seed(rd());
 
-  m_windowCutMultiplier = 0.75;
 }
 
 PipelineInterests::~PipelineInterests()
@@ -290,10 +289,10 @@ PipelineInterests::handleData(const Interest& interest, const Data& data,
 
   rttEstimator.addRttMeasurement(dataFetcher);
 
-  /*if (!m_hasMultiplierChanged) {
+  if (!m_hasMultiplierChanged && m_options.rtoMultiplierReset) {
     rttEstimator.decrementRtoMultiplier();
     m_hasMultiplierChanged = true;
-  }*/
+  }
 
   if (!m_hasFinalBlockId && !data.getFinalBlockId().empty()) {
     m_lastSegmentNo = data.getFinalBlockId().toSegment();
@@ -339,24 +338,24 @@ PipelineInterests::handleError(const std::string& reason, std::size_t pipeNo)
 {
   ++m_nConsecutiveTimeouts;
 
-  /*if (!m_hasMultiplierChanged) {
+  if (!m_hasMultiplierChanged) {
     rttEstimator.incrementRtoMultiplier();
     m_hasMultiplierChanged = true;
-  }*/
+  } // TODO improve tracepoint
 
   if (!m_isWindowCut) {
     float lastWindowSize = m_lastWindowSize;
 
-    setWindowSize(m_lastWindowSize * m_windowCutMultiplier);
+    setWindowSize(m_lastWindowSize * m_options.windowCutMultiplier);
     m_isWindowCut = true;
 
     rttEstimator.incrementRtoMultiplier();
-    std::cerr << rttEstimator.getRtoMultiplier() << std::endl;
     tracepoint(chunksLog, window_decrease, lastWindowSize, rttEstimator.getRtoMultiplier());
   }
 
-  if (m_options.nTimeoutBeforeReset !=0 && m_nConsecutiveTimeouts >= m_options.nTimeoutBeforeReset) {
-    //rttEstimator.reset();
+  if (m_options.nTimeoutBeforeReset !=0 && m_nConsecutiveTimeouts == m_options.nTimeoutBeforeReset) {
+    rttEstimator.reset();
+    tracepoint(chunksLog, rtt_reset, 1);
     // TODO don't cut window?
   }
 

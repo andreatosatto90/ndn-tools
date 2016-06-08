@@ -48,6 +48,8 @@ public:
     , startPipelineSize(1)
     , slowStartThreshold(20)
     , nTimeoutBeforeReset(3)
+    , windowCutMultiplier(0.75)
+    , rtoMultiplierReset(false)
   {
   }
 
@@ -56,6 +58,8 @@ public:
   size_t startPipelineSize;
   size_t slowStartThreshold;
   size_t nTimeoutBeforeReset;
+  float windowCutMultiplier;
+  bool rtoMultiplierReset;
 };
 
 /**

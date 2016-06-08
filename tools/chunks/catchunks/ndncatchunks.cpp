@@ -77,6 +77,8 @@ main(int argc, char** argv)
                     "maximum size of the Interest pipeline (0 = same as start pipeline size)")
     ("timeoutBeforeReset,R",  po::value<size_t>(&options.nTimeoutBeforeReset)->default_value(options.nTimeoutBeforeReset),
                     "number of consecutive timeouts to reset the rtt estimator")
+    ("rtoMultiplierReset,M",  po::bool_switch(&options.rtoMultiplierReset),
+                    "turn on reset RTO multiplier on Data received (Now is half not a full reset)")
     ("retries,r",   po::value<int>(&options.maxRetriesOnTimeoutOrNack)->default_value(options.maxRetriesOnTimeoutOrNack),
                     "maximum number of retries in case of Nack or timeout (-1 = no limit)")
     ("retries-iterative,i", po::value<int>(&maxRetriesAfterVersionFound)->default_value(maxRetriesAfterVersionFound),
@@ -89,6 +91,8 @@ main(int argc, char** argv)
                     "maximum wait time before sending an interest")
     ("startWait,W",  po::bool_switch(&startWait), "add delay only to the first interest of each pipe")
     ("noDiscovery,k",  po::bool_switch(&noDiscovery), "disable discovery, the name should have a version number")
+    ("windowCutMultiplier,c",  po::value<float>(&options.windowCutMultiplier)->default_value(options.windowCutMultiplier),
+                                    "window cut multiplier")
     ("slowStartThreshold,t",  po::value<size_t>(&options.slowStartThreshold)->default_value(options.slowStartThreshold),
                               "slow start threshold (0 = no threshold)")
     ;
@@ -164,6 +168,11 @@ main(int argc, char** argv)
     return 2;
   }
 
+  if (options.windowCutMultiplier < 0 || options.windowCutMultiplier > 1) {
+    std::cerr << "ERROR: window cut multiplier value must be between 0 and 1" << std::endl;
+    return 2;
+  }
+
   options.interestLifetime = time::milliseconds(vm["lifetime"].as<uint64_t>());
 
   try {
@@ -195,7 +204,8 @@ main(int argc, char** argv)
     BOOST_ASSERT(discover != nullptr);
 
     tracepoint(chunksLog, cat_started, options.startPipelineSize, options.maxPipelineSize, options.interestLifetime.count(),
-               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, randomWaitMax, startWait, options.slowStartThreshold, options.nTimeoutBeforeReset);
+               options.maxRetriesOnTimeoutOrNack, options.mustBeFresh, startWait, options.slowStartThreshold,
+               options.nTimeoutBeforeReset, options.windowCutMultiplier, options.rtoMultiplierReset);
 
     consumer.run(*discover, pipeline, noDiscovery);
     m_signalSetInt.cancel();

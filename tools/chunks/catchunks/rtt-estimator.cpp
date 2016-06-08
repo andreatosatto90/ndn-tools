@@ -28,6 +28,8 @@
 #include "rtt-estimator.hpp"
 #include "data-fetcher.hpp"
 
+#include "../chunks-tracepoint.hpp"
+
 namespace ndn {
 namespace chunks {
 
@@ -138,6 +140,8 @@ RttEstimator::incrementRtoMultiplier()
 
   m_rtoMulti *= 2;
 
+  tracepoint(chunksLog, rtoMulti_change, m_rtoMulti);
+
   return m_rtoMulti;
 }
 
@@ -148,6 +152,8 @@ RttEstimator::decrementRtoMultiplier()
     return m_rtoMulti;
 
   m_rtoMulti /= 2;
+
+  tracepoint(chunksLog, rtoMulti_change, m_rtoMulti);
 
   return m_rtoMulti;
 }

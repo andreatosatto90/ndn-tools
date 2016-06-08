@@ -18,10 +18,12 @@ TRACEPOINT_EVENT(
     int, interestLifetime,
     int, maxRetries,
     int, mustBeFresh,
-    int, randomWaitMax,
+    //int, randomWaitMax,
     int, startWait,
     int, ssthresh,
-    int, nTimeoutBeforeReset
+    int, nTimeoutBeforeReset,
+    float, windowCutMultiplier,
+    int, rtoMultiplierReset
   ),
   TP_FIELDS(
     ctf_integer(int, start_pipeline_size, startPipelineSize)
@@ -29,10 +31,12 @@ TRACEPOINT_EVENT(
     ctf_integer(int, interest_lifetime, interestLifetime)
     ctf_integer(int, max_retries, maxRetries)
     ctf_integer(int, must_be_fresh, mustBeFresh)
-    ctf_integer(int, random_wait_max, randomWaitMax)
+    //ctf_integer(int, random_wait_max, randomWaitMax)
     ctf_integer(int, start_wait, startWait)
     ctf_integer(int, ssthresh, ssthresh)
     ctf_integer(int, timeout_reset, nTimeoutBeforeReset)
+    ctf_float(float, window_cut_multiplier, windowCutMultiplier)
+    ctf_integer(int, rto_reset, rtoMultiplierReset)
   )
 )
 
@@ -176,6 +180,28 @@ TRACEPOINT_EVENT(
   TP_FIELDS(
     ctf_integer(int, size, sizeBeforeTimeout)
     ctf_integer(int, rtt_multiplier, rttMultiplier)
+  )
+)
+
+TRACEPOINT_EVENT(
+  chunksLog,
+  rtt_reset,
+  TP_ARGS(
+    int, size
+  ),
+  TP_FIELDS(
+    ctf_integer(int, size, size)
+  )
+)
+
+TRACEPOINT_EVENT(
+  chunksLog,
+  rtoMulti_change,
+  TP_ARGS(
+    int, size
+  ),
+  TP_FIELDS(
+    ctf_integer(int, size, size)
   )
 )
 
